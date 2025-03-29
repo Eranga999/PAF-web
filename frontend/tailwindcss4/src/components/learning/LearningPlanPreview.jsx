@@ -2,6 +2,7 @@
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 
+
 const LearningPlanPreview = ({ plan }) => {
   const [_, setLocation] = useLocation();
 
