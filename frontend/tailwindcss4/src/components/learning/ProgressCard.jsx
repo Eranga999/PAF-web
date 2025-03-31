@@ -1,10 +1,8 @@
-// ProgressCard.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Trophy } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 
 const progressSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -13,15 +11,12 @@ const progressSchema = z.object({
   progressPercentage: z.number().min(1).max(100),
 });
 
-const ProgressCard = () => {
+const ProgressCard = ({ onProgressUpdate }) => {
   const [open, setOpen] = useState(false);
   const [progressValue, setProgressValue] = useState(50);
-
-  // Mock plans data (replace with actual API call in your implementation)
-  const plans = [
-    { id: 1, title: "Italian Cooking Basics" },
-    { id: 2, title: "French Pastry Mastery" },
-  ];
+  const [plans, setPlans] = useState([]);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [progressUpdates, setProgressUpdates] = useState([]);
 
   const form = useForm({
     resolver: zodResolver(progressSchema),
@@ -33,15 +28,89 @@ const ProgressCard = () => {
     },
   });
 
-  const onSubmit = (data) => {
-    // Here you would typically handle the API call
-    console.log("Progress submitted:", {
-      ...data,
-      planId: data.planId ? parseInt(data.planId) : undefined,
-    });
-    form.reset();
-    setOpen(false);
-    setProgressValue(50);
+  // Fetch plans from the backend
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/api/learning-plans");
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Fetched plans in ProgressCard:", data); // Debug log
+          setPlans(data);
+        } else {
+          console.error("Failed to fetch plans:", response.status, await response.text());
+        }
+      } catch (error) {
+        console.error("Error fetching plans:", error);
+      }
+    };
+    fetchPlans();
+  }, []);
+
+  // Fetch progress updates when a plan is selected
+  useEffect(() => {
+    if (selectedPlanId) {
+      const fetchProgressUpdates = async () => {
+        try {
+          const response = await fetch(`http://localhost:8080/api/progress-updates/plan/${selectedPlanId}`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Fetched progress updates in ProgressCard:", data); // Debug log
+            setProgressUpdates(data);
+          } else {
+            console.error("Failed to fetch progress updates:", response.status, await response.text());
+          }
+        } catch (error) {
+          console.error("Error fetching progress updates:", error);
+        }
+      };
+      fetchProgressUpdates();
+    } else {
+      setProgressUpdates([]);
+    }
+  }, [selectedPlanId]);
+
+  const onSubmit = async (data) => {
+    try {
+      const response = await fetch("http://localhost:8080/api/progress-updates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...data,
+          planId: data.planId ? data.planId : undefined,
+        }),
+      });
+      if (response.ok) {
+        const newProgressUpdate = await response.json();
+        console.log("Progress update created:", newProgressUpdate);
+        form.reset();
+        setOpen(false);
+        setProgressValue(50);
+        // Refresh progress updates for the selected plan
+        if (data.planId) {
+          const response = await fetch(`http://localhost:8080/api/progress-updates/plan/${data.planId}`);
+          if (response.ok) {
+            const updatedData = await response.json();
+            console.log("Refreshed progress updates after submission:", updatedData); // Debug log
+            setProgressUpdates(updatedData);
+          } else {
+            console.error("Failed to refresh progress updates:", response.status, await response.text());
+          }
+        }
+        // Notify LearningPlanCard to refresh plans
+        if (onProgressUpdate) {
+          onProgressUpdate();
+        }
+      } else {
+        console.error("Failed to create progress update:", response.status, await response.text());
+        alert("Failed to create progress update. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error creating progress update:", error);
+      alert("Failed to create progress update. Please check if the backend server is running and try again.");
+    }
   };
 
   return (
@@ -103,11 +172,15 @@ const ProgressCard = () => {
                 </label>
                 <select
                   {...form.register("planId")}
+                  onChange={(e) => {
+                    setSelectedPlanId(e.target.value);
+                    form.setValue("planId", e.target.value);
+                  }}
                   className="w-full border rounded-md px-3 py-2"
                 >
                   <option value="">None</option>
                   {plans.map((plan) => (
-                    <option key={plan.id} value={plan.id.toString()}>
+                    <option key={plan.id} value={plan.id}>
                       {plan.title}
                     </option>
                   ))}
@@ -137,6 +210,22 @@ const ProgressCard = () => {
                   </p>
                 )}
               </div>
+
+              {/* Display Progress Updates */}
+              {progressUpdates.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">Recent Progress Updates</h4>
+                  <ul className="space-y-2">
+                    {progressUpdates.map((update) => (
+                      <li key={update.id} className="border p-2 rounded-md">
+                        <p className="text-sm font-medium">{update.title}</p>
+                        <p className="text-sm text-gray-600">{update.description}</p>
+                        <p className="text-sm text-gray-500">Progress: {update.progressPercentage}%</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Footer Buttons */}
               <div className="flex justify-end gap-2">

@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Calendar, LineChart, GraduationCap, Award } from "lucide-react";
-import LearningPlanCard from "../../components/learning/LearningPlanCard.jsx"; 
-import ProgressCard from "../../components/learning/ProgressCard.jsx";     
+import LearningPlanCard from "../../components/learning/LearningPlanCard.jsx";
+import ProgressCard from "../../components/learning/ProgressCard.jsx";
 
 // Mock Navbar and Footer (replace with your actual components)
 const Navbar = () => <div className="bg-gray-800 text-white p-4">Navbar</div>;
@@ -15,16 +14,23 @@ const CulinaryJourneyPage = () => {
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
 
-  // Fetching data (replace with actual API calls)
+  // Fetching data
   useEffect(() => {
-    // Fetch learning plans and progress updates from the API
     const fetchData = async () => {
       try {
-        const plansResponse = await fetch("/api/learning-plans");
-        const progressResponse = await fetch("/api/progress-updates");
-
+        const plansResponse = await fetch("http://localhost:8080/api/learning-plans");
+        if (!plansResponse.ok) {
+          throw new Error(`Failed to fetch learning plans: ${plansResponse.status} ${await plansResponse.text()}`);
+        }
         const plansData = await plansResponse.json();
+        console.log("Fetched learning plans in CulinaryJourneyPage:", plansData); // Debug log
+
+        const progressResponse = await fetch("http://localhost:8080/api/progress-updates");
+        if (!progressResponse.ok) {
+          throw new Error(`Failed to fetch progress updates: ${progressResponse.status} ${await progressResponse.text()}`);
+        }
         const progressData = await progressResponse.json();
+        console.log("Fetched progress updates in CulinaryJourneyPage:", progressData); // Debug log
 
         setLearningPlans(plansData);
         setProgressUpdates(progressData);
@@ -38,6 +44,28 @@ const CulinaryJourneyPage = () => {
 
     fetchData();
   }, []);
+
+  // Function to refresh data when a progress update is shared
+  const handleProgressUpdate = () => {
+    const fetchData = async () => {
+      try {
+        const plansResponse = await fetch("http://localhost:8080/api/learning-plans");
+        if (plansResponse.ok) {
+          const plansData = await plansResponse.json();
+          setLearningPlans(plansData);
+        }
+
+        const progressResponse = await fetch("http://localhost:8080/api/progress-updates");
+        if (progressResponse.ok) {
+          const progressData = await progressResponse.json();
+          setProgressUpdates(progressData);
+        }
+      } catch (error) {
+        console.error("Error refreshing data:", error);
+      }
+    };
+    fetchData();
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
@@ -79,7 +107,7 @@ const CulinaryJourneyPage = () => {
               <div>
                 <p className="text-sm text-gray-500">Skills Learned</p>
                 <p className="text-2xl font-bold">
-                  {progressUpdates.filter(p => p.progressPercentage >= 100).length}
+                  {progressUpdates.filter((p) => p.progressPercentage >= 100).length}
                 </p>
               </div>
             </div>
@@ -116,7 +144,7 @@ const CulinaryJourneyPage = () => {
             {activeTab === "plans" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <LearningPlanCard plans={learningPlans} isLoading={isLoadingPlans} />
+                  <LearningPlanCard plans={learningPlans} isLoading={isLoadingPlans} onProgressUpdate={handleProgressUpdate} />
                 </div>
                 <div>
                   <div className="bg-white rounded-lg shadow-md">
@@ -124,7 +152,7 @@ const CulinaryJourneyPage = () => {
                       <h3 className="text-lg font-bold">Share Progress</h3>
                     </div>
                     <div className="p-6 pt-0">
-                      <ProgressCard />
+                      <ProgressCard onProgressUpdate={handleProgressUpdate} />
                       <div className="mt-6 bg-gray-50 rounded-lg p-4">
                         <h4 className="font-medium text-sm mb-2">Tips for Effective Learning</h4>
                         <ul className="text-sm text-gray-600 space-y-2">
@@ -168,7 +196,7 @@ const CulinaryJourneyPage = () => {
                       <Award className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                       <p className="text-gray-500">You haven't shared any progress updates yet</p>
                       <p className="text-sm text-gray-400 mt-1 mb-4">Track your cooking journey by sharing your progress</p>
-                      <ProgressCard />
+                      <ProgressCard onProgressUpdate={handleProgressUpdate} />
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -195,7 +223,7 @@ const CulinaryJourneyPage = () => {
                             </div>
                             {progress.planId && (
                               <div className="mt-2 text-xs text-gray-500">
-                                Part of: {learningPlans.find(p => p.id === progress.planId)?.title || "Learning Plan"}
+                                Part of: {learningPlans.find((p) => p.id === progress.planId)?.title || "Learning Plan"}
                               </div>
                             )}
                             <div className="mt-2 text-xs text-gray-500">
