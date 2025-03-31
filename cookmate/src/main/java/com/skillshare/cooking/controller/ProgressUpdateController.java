@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/progress-updates")
-@CrossOrigin(origins = "http://localhost:5173") // Adjust for your frontend URL
+@CrossOrigin(origins = "http://localhost:5173") // Adjusted for Vite's default port
 public class ProgressUpdateController {
 
     @Autowired
@@ -32,5 +32,11 @@ public class ProgressUpdateController {
     public ResponseEntity<List<ProgressUpdate>> getProgressUpdatesByPlanId(@PathVariable String planId) {
         List<ProgressUpdate> updates = progressUpdateService.getProgressUpdatesByPlanId(planId);
         return ResponseEntity.ok(updates);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProgressUpdate(@PathVariable String id) {
+        progressUpdateService.deleteProgressUpdate(id);
+        return ResponseEntity.ok().build();
     }
 }

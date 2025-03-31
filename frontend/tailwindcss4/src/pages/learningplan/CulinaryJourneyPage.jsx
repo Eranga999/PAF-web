@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, LineChart, GraduationCap, Award } from "lucide-react";
+import { Calendar, LineChart, GraduationCap, Award, Trash2 } from "lucide-react";
 import LearningPlanCard from "../../components/learning/LearningPlanCard.jsx";
 import ProgressCard from "../../components/learning/ProgressCard.jsx";
 
@@ -23,14 +23,14 @@ const CulinaryJourneyPage = () => {
           throw new Error(`Failed to fetch learning plans: ${plansResponse.status} ${await plansResponse.text()}`);
         }
         const plansData = await plansResponse.json();
-        console.log("Fetched learning plans in CulinaryJourneyPage:", plansData); // Debug log
+        console.log("Fetched learning plans in CulinaryJourneyPage:", plansData);
 
         const progressResponse = await fetch("http://localhost:8080/api/progress-updates");
         if (!progressResponse.ok) {
           throw new Error(`Failed to fetch progress updates: ${progressResponse.status} ${await progressResponse.text()}`);
         }
         const progressData = await progressResponse.json();
-        console.log("Fetched progress updates in CulinaryJourneyPage:", progressData); // Debug log
+        console.log("Fetched progress updates in CulinaryJourneyPage:", progressData);
 
         setLearningPlans(plansData);
         setProgressUpdates(progressData);
@@ -45,7 +45,7 @@ const CulinaryJourneyPage = () => {
     fetchData();
   }, []);
 
-  // Function to refresh data when a progress update is shared
+  // Function to refresh data when a progress update is shared or deleted
   const handleProgressUpdate = () => {
     const fetchData = async () => {
       try {
@@ -65,6 +65,33 @@ const CulinaryJourneyPage = () => {
       }
     };
     fetchData();
+  };
+
+  // Function to delete a progress update
+  const handleDeleteProgressUpdate = async (progressId) => {
+    if (window.confirm("Are you sure you want to delete this progress update?")) {
+      try {
+        const response = await fetch(`http://localhost:8080/api/progress-updates/${progressId}`, {
+          method: "DELETE",
+        });
+        if (response.ok) {
+          // Remove the progress update from the state
+          setProgressUpdates(progressUpdates.filter((progress) => progress.id !== progressId));
+          // Refresh learning plans to update progress percentages
+          const plansResponse = await fetch("http://localhost:8080/api/learning-plans");
+          if (plansResponse.ok) {
+            const plansData = await plansResponse.json();
+            setLearningPlans(plansData);
+          }
+        } else {
+          console.error("Failed to delete progress update:", response.status, await response.text());
+          alert("Failed to delete progress update. Please try again.");
+        }
+      } catch (error) {
+        console.error("Error deleting progress update:", error);
+        alert("Error deleting progress update. Please check if the backend server is running and try again.");
+      }
+    }
   };
 
   return (
@@ -203,14 +230,22 @@ const CulinaryJourneyPage = () => {
                       {progressUpdates
                         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                         .map((progress) => (
-                          <div key={progress.id} className="border rounded-lg p-4">
+                          <div key={progress.id} className="border rounded-lg p-4 relative">
                             <div className="flex justify-between items-start">
                               <div>
                                 <h4 className="font-medium">{progress.title}</h4>
                                 <p className="text-sm text-gray-600 mt-1">{progress.description}</p>
                               </div>
-                              <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                                {progress.progressPercentage}%
+                              <div className="flex items-center gap-2">
+                                <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                                  {progress.progressPercentage}%
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteProgressUpdate(progress.id)}
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                >
+                                  <Trash2 className="h-4 w-4 text-gray-500" />
+                                </button>
                               </div>
                             </div>
                             <div className="mt-3">
@@ -226,9 +261,7 @@ const CulinaryJourneyPage = () => {
                                 Part of: {learningPlans.find((p) => p.id === progress.planId)?.title || "Learning Plan"}
                               </div>
                             )}
-                            <div className="mt-2 text-xs text-gray-500">
-                              {new Date(progress.createdAt).toLocaleDateString()}
-                            </div>
+                       
                           </div>
                         ))}
                     </div>

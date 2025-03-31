@@ -35,7 +35,7 @@ const ProgressCard = ({ onProgressUpdate }) => {
         const response = await fetch("http://localhost:8080/api/learning-plans");
         if (response.ok) {
           const data = await response.json();
-          console.log("Fetched plans in ProgressCard:", data); // Debug log
+          console.log("Fetched plans in ProgressCard:", data);
           setPlans(data);
         } else {
           console.error("Failed to fetch plans:", response.status, await response.text());
@@ -55,7 +55,7 @@ const ProgressCard = ({ onProgressUpdate }) => {
           const response = await fetch(`http://localhost:8080/api/progress-updates/plan/${selectedPlanId}`);
           if (response.ok) {
             const data = await response.json();
-            console.log("Fetched progress updates in ProgressCard:", data); // Debug log
+            console.log("Fetched progress updates in ProgressCard:", data);
             setProgressUpdates(data);
           } else {
             console.error("Failed to fetch progress updates:", response.status, await response.text());
@@ -93,13 +93,13 @@ const ProgressCard = ({ onProgressUpdate }) => {
           const response = await fetch(`http://localhost:8080/api/progress-updates/plan/${data.planId}`);
           if (response.ok) {
             const updatedData = await response.json();
-            console.log("Refreshed progress updates after submission:", updatedData); // Debug log
+            console.log("Refreshed progress updates after submission:", updatedData);
             setProgressUpdates(updatedData);
           } else {
             console.error("Failed to refresh progress updates:", response.status, await response.text());
           }
         }
-        // Notify LearningPlanCard to refresh plans
+        // Notify parent component to refresh
         if (onProgressUpdate) {
           onProgressUpdate();
         }
