@@ -3,7 +3,6 @@ package com.skillshare.cooking.controller;
 import com.skillshare.cooking.entity.LearningPlan;
 import com.skillshare.cooking.service.LearningPlanService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.repository.Update;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
