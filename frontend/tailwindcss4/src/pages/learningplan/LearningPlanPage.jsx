@@ -27,13 +27,12 @@ const learningPlanFormSchema = z.object({
     .array(
       z.object({
         title: z.string().min(1, "Topic title is required"),
-        description: z.string().optional(),
         completed: z.boolean().default(false),
       })
     )
     .min(1, "Add at least one topic"),
-  startDate: z.date().optional(),
-  estimatedEndDate: z.date().optional(),
+  startDate: z.string().optional(),
+  estimatedEndDate: z.string().optional(),
 });
 
 const LearningPlanPage = () => {
@@ -41,8 +40,8 @@ const LearningPlanPage = () => {
   const [isEditingPlan, setIsEditingPlan] = useState(false);
   const [currentPlanId, setCurrentPlanId] = useState(null);
   const [activeTab, setActiveTab] = useState("my-plans");
-  const [selectedStartDate, setSelectedStartDate] = useState(new Date());
-  const [selectedEndDate, setSelectedEndDate] = useState(null);
+  const [selectedStartDate, setSelectedStartDate] = useState("");
+  const [selectedEndDate, setSelectedEndDate] = useState("");
   const [userPlans, setUserPlans] = useState([]);
   const [allPlans, setAllPlans] = useState([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
@@ -53,9 +52,9 @@ const LearningPlanPage = () => {
     defaultValues: {
       title: "",
       description: "",
-      topics: [{ title: "", description: "", completed: false }],
-      startDate: new Date(),
-      estimatedEndDate: undefined,
+      topics: [{ title: "", completed: false }],
+      startDate: "",
+      estimatedEndDate: "",
     },
   });
 
@@ -68,8 +67,8 @@ const LearningPlanPage = () => {
         const response = await fetch("http://localhost:8080/api/learning-plans");
         if (response.ok) {
           const plans = await response.json();
-          setUserPlans(plans); // For now, treat all plans as user plans
-          setAllPlans(plans); // For the "Explore" tab, you might want to fetch from a different endpoint in the future
+          setUserPlans(plans);
+          setAllPlans(plans);
         } else {
           throw new Error("Failed to fetch learning plans");
         }
@@ -98,10 +97,10 @@ const LearningPlanPage = () => {
         body: JSON.stringify({
           title: data.title,
           description: data.description,
-          progress: isEditingPlan ? undefined : 0, // Progress is managed by topics or progress updates
-          topics: data.topics, // Include topics in the request
-          startDate: data.startDate ? data.startDate.toISOString() : undefined,
-          estimatedEndDate: data.estimatedEndDate ? data.estimatedEndDate.toISOString() : undefined,
+          progress: isEditingPlan ? undefined : 0,
+          topics: data.topics,
+          startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
+          estimatedEndDate: data.estimatedEndDate ? new Date(data.estimatedEndDate).toISOString() : undefined,
         }),
       });
 
@@ -126,8 +125,8 @@ const LearningPlanPage = () => {
         setIsEditingPlan(false);
         setCurrentPlanId(null);
         form.reset();
-        setSelectedStartDate(new Date());
-        setSelectedEndDate(null);
+        setSelectedStartDate("");
+        setSelectedEndDate("");
       } else {
         const errorText = await response.text();
         throw new Error(
@@ -146,7 +145,7 @@ const LearningPlanPage = () => {
     const currentTopics = form.getValues("topics");
     form.setValue("topics", [
       ...currentTopics,
-      { title: "", description: "", completed: false },
+      { title: "", completed: false },
     ]);
   };
 
@@ -162,7 +161,6 @@ const LearningPlanPage = () => {
     const updatedTopics = [...plan.topics];
     updatedTopics[topicIndex].completed = !updatedTopics[topicIndex].completed;
 
-    // Calculate progress based on completed topics
     const totalTopics = updatedTopics.length;
     const completedTopics = updatedTopics.filter((t) => t.completed).length;
     const progress = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
@@ -213,11 +211,11 @@ const LearningPlanPage = () => {
         },
         body: JSON.stringify({
           ...plan,
-          id: undefined, // Let the backend generate a new ID
-          progress: 0, // Reset progress for the copied plan
+          id: undefined,
+          progress: 0,
           topics: plan.topics.map((topic) => ({
             ...topic,
-            completed: false, // Reset topic completion
+            completed: false,
           })),
         }),
       });
@@ -257,46 +255,29 @@ const LearningPlanPage = () => {
   };
 
   const editPlan = (plan) => {
-    console.log("Editing plan:", plan);
-    console.log("plan.estimatedEndDate:", plan.estimatedEndDate);
-
     setIsCreatingPlan(true);
     setIsEditingPlan(true);
     setCurrentPlanId(plan.id);
 
-    // Safely parse dates
-    const startDate = plan.startDate ? new Date(plan.startDate) : new Date();
-    const endDate = plan.estimatedEndDate ? new Date(plan.estimatedEndDate) : null;
+    const startDateStr = plan.startDate ? new Date(plan.startDate).toISOString().split("T")[0] : "";
+    const endDateStr = plan.estimatedEndDate ? new Date(plan.estimatedEndDate).toISOString().split("T")[0] : "";
 
-    // Validate dates before setting
-    const validStartDate = isValid(startDate) ? startDate : new Date();
-    const validEndDate = isValid(endDate) ? endDate : null;
-
-    // Reset form with validated values
     form.reset({
       title: plan.title || "",
       description: plan.description || "",
-      topics: plan.topics && plan.topics.length > 0 ? plan.topics : [{ title: "", description: "", completed: false }],
-      startDate: validStartDate,
-      estimatedEndDate: validEndDate,
+      topics: plan.topics && plan.topics.length > 0 ? plan.topics : [{ title: "", completed: false }],
+      startDate: startDateStr,
+      estimatedEndDate: endDateStr,
     });
 
-    // Set state with validated dates
-    setSelectedStartDate(validStartDate);
-    setSelectedEndDate(validEndDate);
+    setSelectedStartDate(startDateStr);
+    setSelectedEndDate(endDateStr);
   };
 
-  // Helper function to safely format dates
   const safeFormatDate = (dateString, dateFormat) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return isValid(date) ? format(date, dateFormat) : "";
-  };
-
-  // Helper function to safely format dates for input fields
-  const safeFormatDateForInput = (date) => {
-    if (!date || !isValid(date)) return "";
-    return format(date, "yyyy-MM-dd");
   };
 
   return (
@@ -313,8 +294,8 @@ const LearningPlanPage = () => {
                 setIsEditingPlan(false);
                 setCurrentPlanId(null);
                 form.reset();
-                setSelectedStartDate(new Date());
-                setSelectedEndDate(null);
+                setSelectedStartDate("");
+                setSelectedEndDate("");
               }}
               className="bg-blue-500 text-white px-4 py-2 rounded-md flex items-center hover:bg-blue-600"
             >
@@ -551,11 +532,6 @@ const LearningPlanPage = () => {
                       {form.formState.errors.topics?.[index]?.title && (
                         <p className="text-red-500 text-sm">{form.formState.errors.topics[index].title.message}</p>
                       )}
-                      <textarea
-                        {...form.register(`topics.${index}.description`)}
-                        className="w-full border rounded-md px-3 py-2 mt-2 h-16"
-                        placeholder="Optional description"
-                      />
                     </div>
                     <button
                       type="button"
@@ -574,13 +550,10 @@ const LearningPlanPage = () => {
                   <label className="block text-sm font-medium mb-1">Start Date</label>
                   <input
                     type="date"
-                    value={safeFormatDateForInput(selectedStartDate)}
+                    value={selectedStartDate}
                     onChange={(e) => {
-                      const date = e.target.value ? new Date(e.target.value) : new Date();
-                      if (isValid(date)) {
-                        setSelectedStartDate(date);
-                        form.setValue("startDate", date);
-                      }
+                      setSelectedStartDate(e.target.value);
+                      form.setValue("startDate", e.target.value);
                     }}
                     className="w-full border rounded-md px-3 py-2"
                   />
@@ -589,13 +562,12 @@ const LearningPlanPage = () => {
                   <label className="block text-sm font-medium mb-1">Target Completion Date</label>
                   <input
                     type="date"
-                    value={safeFormatDateForInput(selectedEndDate)}
+                    value={selectedEndDate}
                     onChange={(e) => {
-                      const date = e.target.value ? new Date(e.target.value) : null;
-                      setSelectedEndDate(date);
-                      form.setValue("estimatedEndDate", date);
+                      setSelectedEndDate(e.target.value);
+                      form.setValue("estimatedEndDate", e.target.value);
                     }}
-                    min={safeFormatDateForInput(selectedStartDate)}
+                    min={selectedStartDate}
                     className="w-full border rounded-md px-3 py-2"
                   />
                   <p className="text-sm text-gray-500">Optional</p>
@@ -610,8 +582,8 @@ const LearningPlanPage = () => {
                     setIsEditingPlan(false);
                     setCurrentPlanId(null);
                     form.reset();
-                    setSelectedStartDate(new Date());
-                    setSelectedEndDate(null);
+                    setSelectedStartDate("");
+                    setSelectedEndDate("");
                   }}
                   className="text-gray-500 hover:text-gray-700"
                 >
