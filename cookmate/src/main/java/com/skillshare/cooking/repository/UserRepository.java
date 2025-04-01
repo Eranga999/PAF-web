@@ -1,7 +1,7 @@
-package com.cookmate.repository;
+package com.skillshare.cooking.repository;
 
-import com.cookmate.entity.User;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.skillshare.cooking.entity.User;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends MongoRepository<User, String> {
 }

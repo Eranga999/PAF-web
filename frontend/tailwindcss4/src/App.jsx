@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import CulinaryJourneyPage from "./pages/learningplan/CulinaryJourneyPage";
 import CommunityExplorePage from  "./pages/learningplan/CommunityExplorePage";
 import LearningPlanPage from    "./pages/learningplan/LearningPlanPage";
+import AddPostForm from "./components/AddPostForm";
 function App() {
 
   return (
@@ -14,6 +15,11 @@ function App() {
 
       <Route path="/community" element={<CommunityExplorePage />} />
       <Route path="/learningplan" element={<LearningPlanPage />} />
+      
+      <Route path="/community" element={<CommunityExplorePage />} />
+      <Route path="/profile" element={<AddPostForm />} />
+
+
     </Routes>
   </Router>
   )

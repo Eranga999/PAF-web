@@ -1,45 +1,64 @@
-package com.cookmate.controller;
+package com.skillshare.cooking.controller;
 
-import com.cookmate.entity.Post;
-import com.cookmate.service.PostService;
-import jakarta.validation.Valid;
+import com.skillshare.cooking.entity.Post;
+import com.skillshare.cooking.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/posts")
+@CrossOrigin(origins = "http://localhost:5173") // Adjusted for Vite's default port
 public class PostController {
 
     @Autowired
     private PostService postService;
 
-    @PostMapping("/create/{userId}")
-    public Post createPost(@PathVariable Long userId, @Valid @RequestBody Post post,
-                           @RequestParam(required = false) List<String> mediaUrls,
-                           @RequestParam(required = false) List<String> tags) {
-        System.out.println("Received createPost request for userId: " + userId);
-        System.out.println("Post data: " + post);
-        System.out.println("Media URLs: " + mediaUrls);
-        System.out.println("Tags: " + tags);
-        return postService.createPost(userId, post, mediaUrls, tags);
+    // Create a new post
+    @PostMapping
+    public ResponseEntity<Post> createPost(@RequestBody Post post) {
+        Post createdPost = postService.createPost(post);
+        return ResponseEntity.ok(createdPost);
     }
 
-    @PutMapping("/update/{postId}")
-    public Post updatePost(@PathVariable Long postId, @Valid @RequestBody Post post,
-                           @RequestParam(required = false) List<String> mediaUrls,
-                           @RequestParam(required = false) List<String> tags) {
-        return postService.updatePost(postId, post, mediaUrls, tags);
+    // Get all posts
+    @GetMapping
+    public ResponseEntity<List<Post>> getAllPosts() {
+        List<Post> posts = postService.getAllPosts();
+        return ResponseEntity.ok(posts);
     }
 
-    @DeleteMapping("/delete/{postId}")
-    public String deletePost(@PathVariable Long postId) {
-        postService.deletePost(postId);
-        return "Post deleted successfully";
+    // Get a post by ID
+    @GetMapping("/{id}")
+    public ResponseEntity<Post> getPostById(@PathVariable String id) {
+        return postService.getPostById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/user/{userId}")
-    public List<Post> getPostsByUserId(@PathVariable Long userId) {
-        return postService.getPostsByUserId(userId);
+    // Delete a post by ID
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePost(@PathVariable String id) {
+        if (postService.getPostById(id).isPresent()) {
+            postService.deletePost(id);
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Post>> getPostsByUserId(@RequestParam String userId) {
+        List<Post> posts = postService.getPostByUserId(userId);
+        return ResponseEntity.ok(posts);
+    }
+
+
+    // Update a post by ID
+    @PutMapping("/{id}")
+    public ResponseEntity<Post> updatePost(@PathVariable String id, @RequestBody Post post) {
+        Post updatedPost = postService.updatePost(id, post);
+        return ResponseEntity.ok(updatedPost);
     }
 }

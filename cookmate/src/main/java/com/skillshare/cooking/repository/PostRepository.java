@@ -1,9 +1,10 @@
-package com.cookmate.repository;
+package com.skillshare.cooking.repository;
 
-import com.cookmate.entity.Post;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.skillshare.cooking.entity.Post;
+import org.springframework.data.mongodb.repository.MongoRepository;
+
 import java.util.List;
 
-public interface PostRepository extends JpaRepository<Post, Long> {
-    List<Post> findByUserId(Long userId);
+public interface PostRepository extends MongoRepository<Post, String> {
+    List<Post> findByUserId(String userId);
 }

@@ -1,13 +1,12 @@
-package com.cookmate.service;
+package com.skillshare.cooking.service;
 
-import com.cookmate.entity.Post;
-import com.cookmate.entity.User;
-import com.cookmate.repository.PostRepository;
-import com.cookmate.repository.UserRepository;
+import com.skillshare.cooking.entity.Post;
+import com.skillshare.cooking.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.time.LocalDateTime;
+
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PostService {
@@ -15,58 +14,38 @@ public class PostService {
     @Autowired
     private PostRepository postRepository;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    public Post createPost(Long userId, Post post, List<String> mediaUrls, List<String> tags) {
-        System.out.println("Creating post for userId: " + userId);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        System.out.println("Found user: " + user.getUsername());
-
-        // Validate media: up to 3 photos or 1 video
-        if (mediaUrls != null) {
-            System.out.println("Media URLs received: " + mediaUrls);
-            if (mediaUrls.size() > 3) {
-                throw new RuntimeException("Cannot upload more than 3 photos or 1 video");
-            }
-            post.setMediaUrls(mediaUrls);
-        }
-
-        System.out.println("Tags received: " + tags);
-        post.setUser(user);
-        post.setTags(tags);
-        post.setCreatedAt(LocalDateTime.now());
+    public Post createPost(Post post) {
         return postRepository.save(post);
     }
 
-    public Post updatePost(Long postId, Post updatedPost, List<String> mediaUrls, List<String> tags) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
-
-        post.setTitle(updatedPost.getTitle());
-        post.setDescription(updatedPost.getDescription());
-        post.setIngredients(updatedPost.getIngredients());
-        post.setInstructions(updatedPost.getInstructions());
-
-        if (mediaUrls != null) {
-            if (mediaUrls.size() > 3) {
-                throw new RuntimeException("Cannot upload more than 3 photos or 1 video");
-            }
-            post.setMediaUrls(mediaUrls);
-        }
-
-        post.setTags(tags);
-        return postRepository.save(post);
+    public List<Post> getAllPosts() {
+        return postRepository.findAll();
     }
 
-    public void deletePost(Long postId) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
-        postRepository.delete(post);
+    public Optional<Post> getPostById(String id) {
+        return postRepository.findById(id);
     }
 
-    public List<Post> getPostsByUserId(Long userId) {
+    public List<Post> getPostByUserId(String userId) {
         return postRepository.findByUserId(userId);
+    }
+
+    public Post updatePost(String id, Post post) {
+        post.setId(id);
+        return postRepository.save(post);
+    }
+
+    public void deletePost(String id) {
+        postRepository.deleteById(id);
+    }
+
+    public Post updateMediaUrls(String id, List<Post.MediaUrl> mediaUrls) {
+        Optional<Post> optionalPost = postRepository.findById(id);
+        if (optionalPost.isPresent()) {
+            Post post = optionalPost.get();
+            post.setMediaUrls(mediaUrls);
+            return postRepository.save(post);
+        }
+        throw new RuntimeException("Post not found with id: " + id);
     }
 }
