@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/learning-plans")
-@CrossOrigin(origins = "http://localhost:5173") // Adjusted for Vite's default port
+@CrossOrigin(origins = "http://localhost:5173") 
 public class LearningPlanController {
 
     @Autowired
