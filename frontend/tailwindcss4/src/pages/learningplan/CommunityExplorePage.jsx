@@ -16,8 +16,8 @@ import {
 import { useLocation } from "wouter";
 
 // Replace with your actual Navbar and Footer components
-const Navbar = () => <div className="bg-gray-800 text-white p-4">Navbar</div>;
-const Footer = () => <div className="bg-gray-800 text-white p-4 mt-8">Footer</div>;
+import Navbar from "../../components/Navbar.jsx";
+import Footer from "../../components/Footer.jsx";
 
 const CommunityExplorePage = () => {
   const [activeTab, setActiveTab] = useState("users");

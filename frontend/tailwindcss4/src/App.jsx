@@ -10,8 +10,8 @@ function App() {
     <Router>
     <Routes>
 
-      <Route path="/" element={<CulinaryJourneyPage />} />
-
+      <Route path="/" element={<div>home not design yet</div>} />
+      <Route path="/culinaryjourney" element={<CulinaryJourneyPage />} />
       <Route path="/community" element={<CommunityExplorePage />} />
       <Route path="/learningplan" element={<LearningPlanPage />} />
     </Routes>
