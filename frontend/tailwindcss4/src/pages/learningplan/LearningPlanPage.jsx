@@ -16,17 +16,9 @@ import {
   Info,
 } from "lucide-react";
 
-// Mock Navbar and Footer (replace with your actual components)
-const Navbar = () => (
-  <div className="bg-gray-800 text-white p-4 shadow-md">
-    <h1 className="text-lg font-semibold">Cooking Learning App</h1>
-  </div>
-);
-const Footer = () => (
-  <div className="bg-gray-800 text-white p-4 mt-8 shadow-inner">
-    <p className="text-sm">© 2025 Cooking Learning App. All rights reserved.</p>
-  </div>
-);
+// Import Navbar and Footer using relative paths
+import Navbar from "../../components/Navbar.jsx";
+import Footer from "../../components/Footer.jsx";
 
 // Define the form schema
 const learningPlanFormSchema = z.object({
@@ -290,13 +282,13 @@ const LearningPlanPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <div className="pt-16">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-800">My Learning Plans</h1>
+      <div className="pt-20">
+        <div className="container mx-auto px-4 py-12">
+          <div className="flex justify-between items-center mb-10">
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">My Learning Plans</h1>
             <button
               onClick={() => {
                 setIsCreatingPlan(true);
@@ -306,7 +298,7 @@ const LearningPlanPage = () => {
                 setSelectedStartDate("");
                 setSelectedEndDate("");
               }}
-              className="bg-blue-600 text-white px-5 py-2 rounded-lg flex items-center hover:bg-blue-700 transition-colors shadow-md"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center hover:bg-blue-700 transition-colors shadow-md"
               aria-label="Create a new learning plan"
             >
               <PlusCircle className="mr-2 h-5 w-5" />
@@ -315,8 +307,8 @@ const LearningPlanPage = () => {
           </div>
 
           {/* Tabs */}
-          <div className="mb-8">
-            <div className="flex border-b border-gray-300">
+          <div className="mb-10">
+            <div className="flex border-b border-gray-200">
               <button
                 className={`px-6 py-3 text-lg font-medium ${activeTab === "my-plans" ? "border-b-4 border-blue-600 text-blue-600" : "text-gray-600 hover:text-blue-600"} transition-colors`}
                 onClick={() => setActiveTab("my-plans")}
@@ -333,7 +325,7 @@ const LearningPlanPage = () => {
 
             {/* My Plans Tab */}
             {activeTab === "my-plans" && (
-              <div className="mt-8">
+              <div className="mt-10">
                 {isLoadingPlans ? (
                   <div className="flex justify-center py-8">
                     <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
@@ -343,32 +335,33 @@ const LearningPlanPage = () => {
                     <p className="text-red-600 text-lg">{error}</p>
                   </div>
                 ) : userPlans.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {userPlans.map((plan) => (
-                      <div key={plan.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                      <div
+                        key={plan.id}
+                        className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300 border border-gray-100"
+                      >
                         <div className="flex justify-between items-start mb-4">
-                          <div className="space-y-2">
+                          <div className="space-y-4">
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-800">Learning Plan Name:</h3>
-                              <p className="text-gray-600 text-base mt-1">{plan.title}</p>
+                              <h3 className="text-xl font-semibold text-gray-900">{plan.title}</h3>
+                              <p className="text-gray-600 text-sm mt-1">{plan.description}</p>
                             </div>
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-800">Plan Overview:</h3>
-                              <p className="text-gray-600 text-base mt-1">{plan.description}</p>
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-800">Progress:</h3>
-                              <div className="w-full bg-gray-200 rounded-full h-3 mt-2">
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-sm font-medium text-gray-700">Progress</h4>
+                                <span className="text-sm font-medium text-blue-600">{calculateProgress(plan)}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2.5">
                                 <div
-                                  className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
                                   style={{ width: `${calculateProgress(plan)}%` }}
                                 ></div>
                               </div>
-                              <p className="text-gray-600 text-base mt-2">{calculateProgress(plan)}% Complete</p>
                             </div>
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-800">Topics or Skills to Learn:</h3>
-                              <div className="space-y-2 mt-2">
+                              <h4 className="text-sm font-medium text-gray-700 mb-2">Topics to Learn</h4>
+                              <div className="space-y-2">
                                 {plan.topics && plan.topics.map((topic, index) => (
                                   <div key={index} className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
@@ -383,7 +376,7 @@ const LearningPlanPage = () => {
                                           <div className="h-5 w-5 border-2 border-gray-300 rounded-full"></div>
                                         )}
                                       </button>
-                                      <span className={`text-base ${topic.completed ? "line-through text-gray-500" : "text-gray-800"}`}>
+                                      <span className={`text-sm ${topic.completed ? "line-through text-gray-500" : "text-gray-800"}`}>
                                         {topic.title}
                                       </span>
                                     </div>
@@ -393,9 +386,9 @@ const LearningPlanPage = () => {
                             </div>
                             {(plan.startDate || plan.estimatedEndDate) && (
                               <div>
-                                <h3 className="text-lg font-semibold text-gray-800">Timeline:</h3>
-                                <div className="text-gray-600 text-base mt-1 flex items-center gap-2">
-                                  <CalendarIcon className="h-5 w-5 text-gray-500" />
+                                <h4 className="text-sm font-medium text-gray-700 mb-2">Timeline</h4>
+                                <div className="text-gray-600 text-sm flex items-center gap-2">
+                                  <CalendarIcon className="h-4 w-4 text-gray-500" />
                                   <span>
                                     {safeFormatDate(plan.startDate, "MMM d, yyyy")}
                                     {plan.estimatedEndDate && safeFormatDate(plan.estimatedEndDate, "MMM d, yyyy") ? ` - ${safeFormatDate(plan.estimatedEndDate, "MMM d, yyyy")}` : ""}
@@ -404,20 +397,20 @@ const LearningPlanPage = () => {
                               </div>
                             )}
                           </div>
-                          <div className="flex gap-3">
+                          <div className="flex gap-2">
                             <button
                               onClick={() => editPlan(plan)}
-                              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
                               aria-label={`Edit ${plan.title} plan`}
                             >
-                              <Edit className="h-5 w-5 text-gray-600" />
+                              <Edit className="h-5 w-5" />
                             </button>
                             <button
                               onClick={() => deletePlan(plan.id)}
-                              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
                               aria-label={`Delete ${plan.title} plan`}
                             >
-                              <Trash2 className="h-5 w-5 text-gray-600" />
+                              <Trash2 className="h-5 w-5" />
                             </button>
                           </div>
                         </div>
@@ -425,13 +418,13 @@ const LearningPlanPage = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                  <div className="bg-white rounded-xl shadow-md p-12 text-center">
                     <ChefHat className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-2xl font-medium text-gray-700 mb-3">No Learning Plans Yet</h3>
                     <p className="text-gray-500 mb-6 text-lg">Create your first learning plan to track your cooking skills progress.</p>
                     <button
                       onClick={() => setIsCreatingPlan(true)}
-                      className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
                       aria-label="Create your first learning plan"
                     >
                       Create Your First Plan
@@ -443,7 +436,7 @@ const LearningPlanPage = () => {
 
             {/* Explore Tab */}
             {activeTab === "explore" && (
-              <div className="mt-8">
+              <div className="mt-10">
                 {isLoadingPlans ? (
                   <div className="flex justify-center py-8">
                     <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
@@ -453,35 +446,34 @@ const LearningPlanPage = () => {
                     <p className="text-red-600 text-lg">{error}</p>
                   </div>
                 ) : allPlans.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {allPlans.map((plan) => (
-                      <div key={plan.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                      <div
+                        key={plan.id}
+                        className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300 border border-gray-100"
+                      >
                         <div className="flex justify-between items-start mb-4">
-                          <div className="space-y-2">
+                          <div className="space-y-4">
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-800">Learning Plan Name:</h3>
-                              <p className="text-gray-600 text-base mt-1">{plan.title}</p>
+                              <h3 className="text-xl font-semibold text-gray-900">{plan.title}</h3>
+                              <p className="text-gray-600 text-sm mt-1">{plan.description}</p>
                             </div>
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-800">Plan Overview:</h3>
-                              <p className="text-gray-600 text-base mt-1">{plan.description}</p>
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-800">Topics or Skills to Learn:</h3>
-                              <div className="space-y-2 mt-2">
+                              <h4 className="text-sm font-medium text-gray-700 mb-2">Topics to Learn</h4>
+                              <div className="space-y-2">
                                 {plan.topics && plan.topics.map((topic, index) => (
                                   <div key={index} className="flex items-center gap-3">
                                     <div className="h-5 w-5 border-2 border-gray-300 rounded-full"></div>
-                                    <span className="text-base text-gray-800">{topic.title}</span>
+                                    <span className="text-sm text-gray-800">{topic.title}</span>
                                   </div>
                                 ))}
                               </div>
                             </div>
                             {(plan.startDate || plan.estimatedEndDate) && (
                               <div>
-                                <h3 className="text-lg font-semibold text-gray-800">Timeline:</h3>
-                                <div className="text-gray-600 text-base mt-1 flex items-center gap-2">
-                                  <CalendarIcon className="h-5 w-5 text-gray-500" />
+                                <h4 className="text-sm font-medium text-gray-700 mb-2">Timeline</h4>
+                                <div className="text-gray-600 text-sm flex items-center gap-2">
+                                  <CalendarIcon className="h-4 w-4 text-gray-500" />
                                   <span>
                                     {safeFormatDate(plan.startDate, "MMM d, yyyy")}
                                     {plan.estimatedEndDate && safeFormatDate(plan.estimatedEndDate, "MMM d, yyyy") ? ` - ${safeFormatDate(plan.estimatedEndDate, "MMM d, yyyy")}` : ""}
@@ -492,17 +484,17 @@ const LearningPlanPage = () => {
                           </div>
                           <button
                             onClick={() => copyPlan(plan)}
-                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors"
                             aria-label={`Copy ${plan.title} plan`}
                           >
-                            <Copy className="h-5 w-5 text-gray-600" />
+                            <Copy className="h-5 w-5" />
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                  <div className="bg-white rounded-xl shadow-md p-12 text-center">
                     <h3 className="text-2xl font-medium text-gray-700 mb-3">No Community Plans Yet</h3>
                     <p className="text-gray-500 text-lg">Be the first to create and share a learning plan!</p>
                   </div>
@@ -515,12 +507,12 @@ const LearningPlanPage = () => {
 
       {/* Create/Edit Plan Modal */}
       {isCreatingPlan && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto ">
-          <div className="bg-white rounded-xl p-8 max-w-2xl w-full shadow-2xl">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
               {isEditingPlan ? "Edit Your Learning Plan" : "Create a New Learning Plan"}
             </h2>
-            <p className="text-gray-600 mb-6 text-lg">
+            <p className="text-gray-600 mb-6 text-sm">
               Structure your cooking learning journey with a clear plan.
             </p>
 
@@ -534,11 +526,11 @@ const LearningPlanPage = () => {
                 </label>
                 <input
                   {...form.register("title")}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
                   placeholder="E.g., Master Italian Cooking"
                 />
                 {form.formState.errors.title && (
-                  <p className="text-red-500 text-sm mt-1">{form.formState.errors.title.message}</p>
+                  <p className="text-red-500 text-xs mt-1">{form.formState.errors.title.message}</p>
                 )}
               </div>
 
@@ -551,11 +543,11 @@ const LearningPlanPage = () => {
                 </label>
                 <textarea
                   {...form.register("description")}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 h-24 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="w-full border border-gray-200 rounded-lg px-4 py-3 h-24 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
                   placeholder="Describe your learning goals (e.g., 'Learn to cook authentic Italian dishes')"
                 />
                 {form.formState.errors.description && (
-                  <p className="text-red-500 text-sm mt-1">{form.formState.errors.description.message}</p>
+                  <p className="text-red-500 text-xs mt-1">{form.formState.errors.description.message}</p>
                 )}
               </div>
 
@@ -565,7 +557,7 @@ const LearningPlanPage = () => {
                   <button
                     type="button"
                     onClick={addTopic}
-                    className="border border-gray-300 px-4 py-1 rounded-lg text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors"
+                    className="border border-gray-200 px-4 py-1 rounded-lg text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors shadow-sm"
                     aria-label="Add a new topic or skill"
                   >
                     <PlusCircle className="h-4 w-4 mr-1" />
@@ -577,17 +569,17 @@ const LearningPlanPage = () => {
                     <div className="flex-1">
                       <input
                         {...form.register(`topics.${index}.title`)}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
                         placeholder={`Topic ${index + 1} (e.g., Pasta Making)`}
                       />
                       {form.formState.errors.topics?.[index]?.title && (
-                        <p className="text-red-500 text-sm mt-1">{form.formState.errors.topics[index].title.message}</p>
+                        <p className="text-red-500 text-xs mt-1">{form.formState.errors.topics[index].title.message}</p>
                       )}
                     </div>
                     <button
                       type="button"
                       onClick={() => removeTopic(index)}
-                      className="mt-1 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                      className="mt-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
                       disabled={form.watch("topics").length <= 1}
                       aria-label={`Remove topic ${index + 1}`}
                     >
@@ -597,7 +589,7 @@ const LearningPlanPage = () => {
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                   <input
@@ -607,7 +599,7 @@ const LearningPlanPage = () => {
                       setSelectedStartDate(e.target.value);
                       form.setValue("startDate", e.target.value);
                     }}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
                   />
                 </div>
                 <div>
@@ -620,9 +612,9 @@ const LearningPlanPage = () => {
                       form.setValue("estimatedEndDate", e.target.value);
                     }}
                     min={selectedStartDate}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
                   />
-                  <p className="text-sm text-gray-500 mt-1">Optional</p>
+                  <p className="text-xs text-gray-500 mt-1">Optional</p>
                 </div>
               </div>
 
@@ -645,7 +637,7 @@ const LearningPlanPage = () => {
                 <button
                   type="submit"
                   disabled={form.formState.isSubmitting}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center disabled:opacity-50 hover:bg-blue-700 transition-colors shadow-md"
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg flex items-center disabled:opacity-50 hover:bg-blue-700 transition-colors shadow-md"
                   aria-label={isEditingPlan ? "Update your learning plan" : "Create your learning plan"}
                 >
                   {form.formState.isSubmitting ? (
@@ -661,6 +653,7 @@ const LearningPlanPage = () => {
           </div>
         </div>
       )}
+
       <Footer />
     </div>
   );

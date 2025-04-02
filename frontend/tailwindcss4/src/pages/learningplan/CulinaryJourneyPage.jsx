@@ -4,9 +4,8 @@ import LearningPlanCard from "../../components/learning/LearningPlanCard.jsx";
 import ProgressCard from "../../components/learning/ProgressCard.jsx";
 
 // Mock Navbar and Footer (replace with your actual components)
-const Navbar = () => <div className="bg-gray-800 text-white p-4">Navbar</div>;
-const Footer = () => <div className="bg-gray-800 text-white p-4 mt-8">Footer</div>;
-
+import Navbar from "../../components/Navbar.jsx";
+import Footer from "../../components/Footer.jsx";
 const CulinaryJourneyPage = () => {
   const [activeTab, setActiveTab] = useState("plans");
   const [learningPlans, setLearningPlans] = useState([]);
