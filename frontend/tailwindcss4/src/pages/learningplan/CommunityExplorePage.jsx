@@ -1,6 +1,4 @@
-
-// CommunityExplorePage.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { 
   Search, 
@@ -14,45 +12,89 @@ import {
   MessageSquare 
 } from "lucide-react";
 import { useLocation } from "wouter";
-
-// Replace with your actual Navbar and Footer components
 import Navbar from "../../components/Navbar.jsx";
 import Footer from "../../components/Footer.jsx";
 
 const CommunityExplorePage = () => {
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState("plans");
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useLocation();
+  const [allUsers, setAllUsers] = useState([]);
+  const [allPlans, setAllPlans] = useState([]);
+  const [allPosts, setAllPosts] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Replace with actual user data from authentication or API
-  const user = { id: 1 };
+  const user = { id: 1 }; // Replace with actual auth user
 
-  // Replace with actual API data for users, plans, and posts
-  const allUsers = []; // Fetch users from your API
-  const allPlans = []; // Fetch learning plans from your API
-  const allPosts = []; // Fetch posts from your API
+  // Fetch learning plans
+  useEffect(() => {
+    const fetchPlans = async () => {
+      setPlansLoading(true);
+      try {
+        const response = await fetch("http://localhost:8080/api/learning-plans", {
+          headers: {
+            "Content-Type": "application/json",
+            // Add auth headers if needed
+          },
+        });
+        if (!response.ok) throw new Error("Failed to fetch learning plans");
+        const data = await response.json();
+        setAllPlans(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setPlansLoading(false);
+      }
+    };
 
-  const usersLoading = false; // Replace with actual loading state
-  const plansLoading = false; // Replace with actual loading state
-  const postsLoading = false; // Replace with actual loading state
+    fetchPlans();
+  }, []);
 
   const followUser = (userId) => {
     console.log("Following user:", userId);
+    // Implement API call to follow user
   };
 
-  const copyPlan = (plan) => {
-    console.log("Copying plan:", plan);
+  const copyPlan = async (plan) => {
+    try {
+      const newPlan = {
+        ...plan,
+        id: null, // Let backend generate new ID
+        userId: user.id, // Assign to current user
+        progress: 0, // Reset progress
+        topics: plan.topics.map(topic => ({ ...topic, completed: false })), // Reset topic completion
+      };
+      
+      const response = await fetch("http://localhost:8080/api/learning-plans", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newPlan),
+      });
+      
+      if (!response.ok) throw new Error("Failed to copy plan");
+      const createdPlan = await response.json();
+      setAllPlans([...allPlans, createdPlan]);
+      alert("Plan copied successfully!");
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const calculateProgress = (plan) => {
-    if (!plan.total || plan.total === 0 || plan.progress === null || plan.progress === undefined) return 0;
-    return Math.round((plan.progress / plan.total) * 100);
+    if (!plan.topics || plan.topics.length === 0) return 0;
+    const completed = plan.topics.filter(topic => topic.completed).length;
+    return Math.round((completed / plan.topics.length) * 100);
   };
 
   const filteredUsers = searchQuery 
     ? allUsers.filter(u => 
         (u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-         u.username.toLowerCase().includes(searchQuery.toLowerCase())))
+         u.username?.toLowerCase().includes(searchQuery.toLowerCase())))
     : allUsers;
 
   const filteredPlans = searchQuery
@@ -70,7 +112,6 @@ const CommunityExplorePage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-
       <div className="pt-16">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -86,7 +127,12 @@ const CommunityExplorePage = () => {
             </div>
           </div>
 
-          {/* Tabs */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+              {error}
+            </div>
+          )}
+
           <div className="mb-6">
             <div className="flex border-b">
               <button
@@ -112,12 +158,11 @@ const CommunityExplorePage = () => {
               </button>
             </div>
 
-            {/* Users Tab */}
             {activeTab === "users" && (
               <div className="mt-6">
                 {usersLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Mock loading skeletons */}
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                   </div>
                 ) : filteredUsers.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -173,7 +218,6 @@ const CommunityExplorePage = () => {
               </div>
             )}
 
-            {/* Learning Plans Tab */}
             {activeTab === "plans" && (
               <div className="mt-6">
                 {plansLoading ? (
@@ -186,24 +230,24 @@ const CommunityExplorePage = () => {
                       <div key={plan.id} className="bg-white rounded-lg shadow-md overflow-hidden">
                         <div className="bg-blue-100 p-4">
                           <h3 className="text-lg font-semibold truncate">{plan.title}</h3>
-                          <p className="text-sm text-gray-600">By: User {plan.userId}</p>
+                          <p className="text-sm text-gray-600">By: User {plan.userId || "Unknown"}</p>
                         </div>
                         <div className="p-4">
                           <p className="text-sm text-gray-600 mb-4 line-clamp-2">{plan.description}</p>
                           <div className="mb-4">
                             <div className="flex justify-between text-sm mb-1">
                               <span>Progress</span>
-                              <span>{plan.progress} of {plan.total} completed</span>
+                              <span>{plan.topics.filter(t => t.completed).length} / {plan.topics.length}</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
                               <div
-                                className="bg-blue-500 h-2 rounded-full"
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                                 style={{ width: `${calculateProgress(plan)}%` }}
-                              ></div>
+                              />
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <p className="text-sm font-medium">Topics:</p>
+                            <p className="text-sm font-medium">Topics Preview:</p>
                             {plan.topics.slice(0, 3).map((topic, index) => (
                               <div key={index} className="flex items-center">
                                 {topic.completed ? (
@@ -220,11 +264,14 @@ const CommunityExplorePage = () => {
                               <p className="text-xs text-gray-500">+ {plan.topics.length - 3} more topics</p>
                             )}
                           </div>
+                          <div className="mt-2 text-xs text-gray-500">
+                            Created: {plan.startDate ? format(new Date(plan.startDate), 'MMM d, yyyy') : 'N/A'}
+                          </div>
                         </div>
                         <div className="flex justify-between border-t p-4">
                           <button
                             onClick={() => copyPlan(plan)}
-                            className="border border-gray-300 px-3 py-1 rounded-md text-sm hover:bg-gray-50"
+                            className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 transition-colors"
                           >
                             Copy Plan
                           </button>
@@ -245,14 +292,13 @@ const CommunityExplorePage = () => {
                     <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-xl font-medium text-gray-700 mb-2">No Learning Plans Found</h3>
                     <p className="text-gray-500">
-                      {searchQuery ? `No learning plans match "${searchQuery}"` : "There are no learning plans available yet."}
+                      {searchQuery ? `No plans match "${searchQuery}"` : "No learning plans available yet."}
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Recipes Tab */}
             {activeTab === "recipes" && (
               <div className="mt-6">
                 {postsLoading ? (
@@ -316,7 +362,6 @@ const CommunityExplorePage = () => {
           </div>
         </div>
       </div>
-
       <Footer />
     </div>
   );
