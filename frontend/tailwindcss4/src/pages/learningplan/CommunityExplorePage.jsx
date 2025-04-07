@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react"; // Added useEffect
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import {
-  Search,
-  Users,
-  BookOpen,
-  ChefHat,
-  Loader2,
-  Clock,
-  Check,
-  ThumbsUp,
-  MessageSquare,
+import { 
+  Search, 
+  Users, 
+  BookOpen, 
+  ChefHat, 
+  Loader2, 
+  Clock, 
+  Check, 
+  ThumbsUp, 
+  MessageSquare 
 } from "lucide-react";
 import { useLocation } from "wouter";
 import Navbar from "../../components/Navbar.jsx";
@@ -92,10 +91,6 @@ const CommunityExplorePage = () => {
     return Math.round((completed / plan.topics.length) * 100);
   };
 
-  const filteredUsers = searchQuery
-    ? allUsers.filter((u) =>
-        (u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         u.username.toLowerCase().includes(searchQuery.toLowerCase())))
   const filteredUsers = searchQuery 
     ? allUsers.filter(u => 
         (u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -103,15 +98,15 @@ const CommunityExplorePage = () => {
     : allUsers;
 
   const filteredPlans = searchQuery
-    ? allPlans.filter((plan) =>
+    ? allPlans.filter(plan => 
         plan.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (plan.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false))
     : allPlans;
 
   const filteredPosts = searchQuery
-    ? allPosts.filter((post) =>
+    ? allPosts.filter(post => 
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (post.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false))
+        post.content.toLowerCase().includes(searchQuery.toLowerCase()))
     : allPosts;
 
   return (
@@ -283,7 +278,7 @@ const CommunityExplorePage = () => {
                           <div className="flex items-center text-xs text-gray-500">
                             <Clock className="h-3 w-3 mr-1" />
                             {plan.estimatedEndDate ? (
-                              <span>Target: {format(new Date(plan.estimatedEndDate), "MMM d, yyyy")}</span>
+                              <span>Target: {format(new Date(plan.estimatedEndDate), 'MMM d, yyyy')}</span>
                             ) : (
                               <span>No target date</span>
                             )}
@@ -310,10 +305,6 @@ const CommunityExplorePage = () => {
                   <div className="flex justify-center p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                   </div>
-                ) : postsError ? (
-                  <div className="bg-red-50 rounded-lg p-6 text-center shadow-md">
-                    <p className="text-red-600 text-lg">{postsError}</p>
-                  </div>
                 ) : filteredPosts.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredPosts.map((post) => (
@@ -335,43 +326,9 @@ const CommunityExplorePage = () => {
                             <span className="text-sm text-gray-600">User {post.userId}</span>
                           </div>
                           <h3 className="text-xl font-semibold truncate">{post.title}</h3>
-                          {post.description && (
-                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{post.description}</p>
-                          )}
                         </div>
                         <div className="p-4 pt-0">
-                          {post.ingredients && post.ingredients.length > 0 && (
-                            <div className="mb-4">
-                              <h4 className="text-sm font-medium text-gray-700 mb-2">Ingredients</h4>
-                              <ul className="list-disc pl-5 text-sm text-gray-700">
-                                {post.ingredients.map((ingredient, index) => (
-                                  <li key={index}>{ingredient}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {post.instructions && post.instructions.length > 0 && (
-                            <div className="mb-4">
-                              <h4 className="text-sm font-medium text-gray-700 mb-2">Instructions</h4>
-                              <ol className="list-decimal pl-5 text-sm text-gray-700">
-                                {post.instructions.map((instruction, index) => (
-                                  <li key={index}>{instruction}</li>
-                                ))}
-                              </ol>
-                            </div>
-                          )}
-                          {post.tags && post.tags.length > 0 && (
-                            <div className="flex gap-2 flex-wrap mb-4">
-                              {post.tags.map((tag, index) => (
-                                <span
-                                  key={index}
-                                  className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          <p className="text-sm text-gray-600 mb-4 line-clamp-3">{post.content}</p>
                         </div>
                         <div className="flex justify-between border-t p-4">
                           <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -385,7 +342,7 @@ const CommunityExplorePage = () => {
                             </div>
                           </div>
                           <div className="text-xs text-gray-500">
-                            {post.createdDate ? format(new Date(post.createdDate), "MMM d, yyyy") : "Recently"}
+                            {post.createdAt ? format(new Date(post.createdAt), 'MMM d, yyyy') : 'Recently'}
                           </div>
                         </div>
                       </div>
