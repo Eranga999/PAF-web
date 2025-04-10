@@ -72,11 +72,38 @@ to do
 ## 📂 Project Structure
 
 ```bash
-PAF-web/
-├── backend/               # Spring Boot project
-│   ├── src/
-│   └── pom.xml
-├── frontend/              # React + Vite + Tailwind CSS
-│   ├── src/
-│   └── vite.config.js
-└── README.md
+cookmate/
+└── src/
+    ├── main/
+    │   ├── java/
+    │   │   ├── com/
+    │   │   │   ├── cookmate/
+    │   │   │   │   ├── controllers/      # REST controllers
+    │   │   │   │   ├── models/           # Java models (POJOs)
+    │   │   │   │   ├── repositories/     # Data access objects (DAO)
+    │   │   │   │   ├── services/         # Business logic (service layer)
+    │   │   │   │   └── CookmateApplication.java   # Main Spring Boot application class
+    │   │   │   └── config/                # Configuration classes (e.g., security, database)
+    │   ├── resources/
+    │   │   ├── application.properties     # Application settings (e.g., database, API settings)
+    │   │   └── static/                   # Static resources (e.g., images, files)
+    │   └── webapp/
+    │       └── WEB-INF/                  # Web-specific files (e.g., JSP files, configurations)
+    └── test/
+        ├── java/
+        │   └── com/
+        │       └── cookmate/
+        │           └── CookmateApplicationTests.java   # Unit tests for backend logic
+        └── resources/                    # Test resources
+
+frontend/
+└── tailwindcss4/
+    └── src/
+        ├── assets/            
+        ├── components/               # Reusable UI components
+        ├── pages/                    # React pages for routing
+        ├── App.js                    # Root React component (handles routing and layout)
+        ├── index.js                  # Entry point for React application
+        ├── tailwind.config.js        # Tailwind CSS configuration
+        └── index.css                 # Global CSS file (includes Tailwind's utility classes)
+
