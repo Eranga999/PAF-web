@@ -5,6 +5,7 @@ import CulinaryJourneyPage from "./pages/learningplan/CulinaryJourneyPage";
 import CommunityExplorePage from  "./pages/learningplan/CommunityExplorePage";
 import LearningPlanPage from    "./pages/learningplan/LearningPlanPage";
 import PostCard from "./components/Post/PostCard";
+import RecipesPage from "./pages/Recipes/RecipesPage";
 
 //todo
 import Homepage from "./pages/homepage";
@@ -18,6 +19,7 @@ function App() {
       <Route path="/community" element={<CommunityExplorePage />} />
       <Route path="/learningplan" element={<LearningPlanPage />} />
       <Route path="/post" element={< PostCard />} />
+      <Route path="/recipes" element={<RecipesPage/>} />
     </Routes>
   </Router>
   )

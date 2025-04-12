@@ -93,6 +93,7 @@ const PostCard = ({ userId, onPostUpdate }) => {
           const formData = new FormData();
           formData.append("file", media.file);
 
+          console.log("Uploading file:", media.file.name); // Debug log
           const uploadResponse = await fetch("http://localhost:8080/api/upload", {
             method: "POST",
             body: formData,
@@ -100,11 +101,14 @@ const PostCard = ({ userId, onPostUpdate }) => {
 
           if (uploadResponse.ok) {
             const uploadedUrl = await uploadResponse.text();
+            console.log("Upload successful, URL:", uploadedUrl); // Debug log
             mediaUrls.push(uploadedUrl);
           } else {
+            console.error("Upload failed, status:", uploadResponse.status); // Debug log
             throw new Error("Failed to upload media");
           }
         } else if (media.url) {
+          console.log("Keeping existing URL:", media.url); // Debug log
           mediaUrls.push(media.url);
         }
       }
@@ -115,6 +119,8 @@ const PostCard = ({ userId, onPostUpdate }) => {
         createdDate: new Date().toISOString(),
         mediaUrls,
       };
+
+      console.log("Submitting post payload:", JSON.stringify(payload, null, 2)); // Debug log
 
       const url = editingPost
         ? `http://localhost:8080/api/posts/${editingPost.id}`
@@ -130,6 +136,8 @@ const PostCard = ({ userId, onPostUpdate }) => {
       });
 
       if (response.ok) {
+        const savedPost = await response.json();
+        console.log("Post saved successfully:", savedPost); // Debug log
         await fetchPosts();
         form.reset();
         setEditingPost(null);
@@ -137,7 +145,8 @@ const PostCard = ({ userId, onPostUpdate }) => {
         setMediaFiles([]);
         if (onPostUpdate) onPostUpdate();
       } else {
-        console.error("Failed to save post:", response.statusText);
+        console.error("Failed to save post, status:", response.status); // Debug log
+        throw new Error("Failed to save post");
       }
     } catch (error) {
       console.error("Error saving post:", error);
