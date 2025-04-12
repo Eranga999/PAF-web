@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { Camera, Plus, Edit, Trash2, Tag, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom"; // Add this import
 
 // Define the form schema using Zod for validation
 const postSchema = z.object({
@@ -20,6 +21,7 @@ const PostCard = ({ onPostUpdate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [mediaFiles, setMediaFiles] = useState([]);
+  const navigate = useNavigate(); // Add navigate hook
 
   const form = useForm({
     resolver: zodResolver(postSchema),
@@ -32,29 +34,50 @@ const PostCard = ({ onPostUpdate }) => {
     },
   });
 
-  // Fetch all posts
+  // Fetch posts for the authenticated user
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
-      console.log("Fetching all posts"); // Debug log
-      const response = await fetch(`http://localhost:8080/api/posts`);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error("No token found, redirecting to login");
+        navigate('/login');
+        return;
+      }
+      console.log("Fetching user posts with token:", token);
+      const response = await fetch(`http://localhost:8080/api/posts/user`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
       if (response.ok) {
         const data = await response.json();
-        console.log("Fetched posts:", data); // Debug log
-        setPosts(data); // No userId filtering
+        console.log("Fetched user posts:", data);
+        setPosts(data);
       } else {
         console.error("Failed to fetch posts, status:", response.status);
+        alert("Failed to fetch your posts. Please log in again.");
+        navigate('/login');
       }
     } catch (error) {
       console.error("Error fetching posts:", error);
+      alert("An error occurred while fetching your posts.");
+      navigate('/login');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchPosts();
+    } else {
+      console.log("No token on mount, redirecting to login");
+      navigate('/login');
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (editingPost) {
@@ -89,6 +112,25 @@ const PostCard = ({ onPostUpdate }) => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error("No token found, redirecting to login");
+        navigate('/login');
+        return;
+      }
+
+      // Decode JWT to get userId
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const claims = JSON.parse(jsonPayload);
+      const userId = claims.id;
+
       const mediaUrls = [];
       for (const media of mediaFiles) {
         if (media.file) {
@@ -98,6 +140,9 @@ const PostCard = ({ onPostUpdate }) => {
           console.log("Uploading file:", media.file.name);
           const uploadResponse = await fetch("http://localhost:8080/api/upload", {
             method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
             body: formData,
           });
 
@@ -117,7 +162,7 @@ const PostCard = ({ onPostUpdate }) => {
 
       const payload = {
         ...data,
-        userId: "temp-user", // Temporary userId until login is added
+        userId: userId,
         createdDate: new Date().toISOString(),
         mediaUrls,
       };
@@ -132,6 +177,7 @@ const PostCard = ({ onPostUpdate }) => {
       const response = await fetch(url, {
         method,
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
@@ -176,15 +222,28 @@ const PostCard = ({ onPostUpdate }) => {
   const handleDeletePost = async (postId) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
       try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.error("No token found, redirecting to login");
+          navigate('/login');
+          return;
+        }
         const response = await fetch(`http://localhost:8080/api/posts/${postId}`, {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
         if (response.ok) {
           setPosts(posts.filter((post) => post.id !== postId));
           if (onPostUpdate) onPostUpdate();
+        } else {
+          console.error("Failed to delete post, status:", response.status);
+          alert("Failed to delete post.");
         }
       } catch (error) {
         console.error("Error deleting post:", error);
+        alert("An error occurred while deleting the post.");
       }
     }
   };
@@ -192,7 +251,7 @@ const PostCard = ({ onPostUpdate }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-bold">Posts</h2>
+        <h2 className="text-lg font-bold">My Posts</h2>
         <button
           onClick={() => {
             setEditingPost(null);
@@ -391,7 +450,7 @@ const PostCard = ({ onPostUpdate }) => {
         ) : posts.length === 0 ? (
           <div className="text-center py-8 border border-dashed rounded-lg">
             <Camera className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-500">No posts available yet</p>
+            <p className="text-gray-500">You haven't posted anything yet</p>
             <button
               onClick={() => setOpen(true)}
               className="mt-2 text-blue-500 flex items-center mx-auto"
@@ -415,9 +474,9 @@ const PostCard = ({ onPostUpdate }) => {
                 <div className={`${post.mediaUrls?.length ? "" : "border-b"} p-4`}>
                   <div className="flex items-center mb-2">
                     <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-                      <span className="text-gray-500">U{post.userId || "unknown"}</span>
+                      <span className="text-gray-500">You</span>
                     </div>
-                    <span className="text-sm text-gray-600">User {post.userId || "unknown"}</span>
+                    <span className="text-sm text-gray-600">You</span>
                   </div>
                   <div className="flex justify-between items-start">
                     <div>
