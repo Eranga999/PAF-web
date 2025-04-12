@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Plus, Edit, Trash2, Loader2, Home, MessageCircle, Bell, User, X, Heart } from 'lucide-react';
+import { Camera, Plus, Edit, Trash2, Loader2, X, Heart, MessageCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -562,23 +562,6 @@ const ProfilePage = () => {
         >
           <Plus className="h-6 w-6" />
         </button>
-
-        {/* Bottom Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-t-lg flex justify-around items-center py-2">
-          <button onClick={() => navigate('/')} className="p-2">
-            <Home className="h-6 w-6 text-gray-500" />
-          </button>
-          <button onClick={() => navigate('/chat')} className="p-2">
-            <MessageCircle className="h-6 w-6 text-gray-500" />
-          </button>
-          <div className="w-12 h-12" /> {/* Spacer for FAB */}
-          <button onClick={() => navigate('/notifications')} className="p-2">
-            <Bell className="h-6 w-6 text-gray-500" />
-          </button>
-          <button onClick={() => navigate('/profile')} className="p-2">
-            <User className="h-6 w-6 text-gray-500" />
-          </button>
-        </div>
 
         {/* Post Creation/Editing Modal */}
         {openPostModal && (

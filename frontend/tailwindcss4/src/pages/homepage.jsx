@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Home, Bell, User, Plus } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Plus, X, Camera } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -9,6 +9,7 @@ const HomePage = () => {
   const [learningPlans, setLearningPlans] = useState([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const [selectedPost, setSelectedPost] = useState(null); // State for selected post
   const navigate = useNavigate();
 
   // Fetch all posts from all users
@@ -22,10 +23,31 @@ const HomePage = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setPosts(data);
-        console.log('HomePage.jsx - Fetched posts:', data);
+        // Fetch user names for each post
+        const postsWithNames = await Promise.all(
+          data.map(async (post) => {
+            try {
+              const userResponse = await fetch(`http://localhost:8080/api/profile/email/${post.userEmail}`, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${localStorage.getItem('token')}`, // Include token if required
+                },
+              });
+              if (userResponse.ok) {
+                const userData = await userResponse.json();
+                return { ...post, userName: userData.name || 'Unknown User' };
+              }
+              return { ...post, userName: 'Unknown User' };
+            } catch (error) {
+              console.error('HomePage.jsx - Error fetching user name for email:', post.userEmail, error);
+              return { ...post, userName: 'Unknown User' };
+            }
+          })
+        );
+        setPosts(postsWithNames);
+        console.log('HomePage.jsx - Fetched posts with names:', postsWithNames);
       } else {
-        console.error('Failed to fetch posts');
+        console.error('HomePage.jsx - Failed to fetch posts');
       }
     } catch (error) {
       console.error('HomePage.jsx - Fetch posts error:', error);
@@ -48,7 +70,7 @@ const HomePage = () => {
         setLearningPlans(plans);
         console.log('HomePage.jsx - Fetched learning plans:', plans);
       } else {
-        console.error('Failed to fetch learning plans');
+        console.error('HomePage.jsx - Failed to fetch learning plans');
       }
     } catch (error) {
       console.error('HomePage.jsx - Fetch learning plans error:', error);
@@ -63,6 +85,11 @@ const HomePage = () => {
     const total = plan.topics.length;
     const completed = plan.topics.filter((topic) => topic.completed).length;
     return Math.round((completed / total) * 100);
+  };
+
+  // Handle post click to show details
+  const handlePostClick = (post) => {
+    setSelectedPost(post);
   };
 
   // Initial fetch
@@ -141,11 +168,11 @@ const HomePage = () => {
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                     <span className="text-gray-500 text-sm">
-                      {post.userEmail ? post.userEmail.charAt(0).toUpperCase() : 'U'}
+                      {post.userName ? post.userName.charAt(0).toUpperCase() : 'U'}
                     </span>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">{post.userEmail || 'Unknown User'}</p>
+                    <p className="text-sm font-semibold">{post.userName || 'Unknown User'}</p>
                     <p className="text-xs text-gray-500">{post.createdDate}</p>
                   </div>
                 </div>
@@ -153,13 +180,17 @@ const HomePage = () => {
                   <img
                     src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
                     alt="Post media"
-                    className="w-full h-64 object-cover rounded-lg mb-3"
+                    className="w-full h-64 object-cover rounded-lg mb-3 cursor-pointer"
                     onError={(e) => {
                       e.target.src = 'https://via.placeholder.com/300';
                     }}
+                    onClick={() => handlePostClick(post)}
                   />
                 ) : (
-                  <div className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg mb-3">
+                  <div
+                    className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg mb-3 cursor-pointer"
+                    onClick={() => handlePostClick(post)}
+                  >
                     <span className="text-gray-400">No Image</span>
                   </div>
                 )}
@@ -194,22 +225,90 @@ const HomePage = () => {
           <Plus className="h-6 w-6" />
         </button>
 
-        {/* Bottom Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-t-lg flex justify-around items-center py-2">
-          <button onClick={() => navigate('/')} className="p-2">
-            <Home className="h-6 w-6 text-gray-500" />
-          </button>
-          <button onClick={() => navigate('/chat')} className="p-2">
-            <MessageCircle className="h-6 w-6 text-gray-500" />
-          </button>
-          <div className="w-12 h-12" /> {/* Spacer for FAB */}
-          <button onClick={() => navigate('/notifications')} className="p-2">
-            <Bell className="h-6 w-6 text-gray-500" />
-          </button>
-          <button onClick={() => navigate('/profile')} className="p-2">
-            <User className="h-6 w-6 text-gray-500" />
-          </button>
-        </div>
+        {/* Post Detail Modal */}
+        {selectedPost && (
+          <div className="fixed inset-0 flex flex-col z-50">
+            <div className="flex-grow bg-white p-6 overflow-y-auto">
+              <div className="container mx-auto">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">{selectedPost.title}</h2>
+                  <button
+                    onClick={() => setSelectedPost(null)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                    <span className="text-gray-500 text-sm">
+                      {selectedPost.userName ? selectedPost.userName.charAt(0).toUpperCase() : 'U'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{selectedPost.userName || 'Unknown User'}</p>
+                    <p className="text-xs text-gray-500">{selectedPost.createdDate}</p>
+                  </div>
+                </div>
+                {selectedPost.mediaUrls && selectedPost.mediaUrls.length > 0 ? (
+                  <img
+                    src={`http://localhost:8080/api/images/${selectedPost.mediaUrls[0]}`}
+                    alt="Post media"
+                    className="w-full h-96 object-cover rounded-lg mb-3"
+                    onError={(e) => {
+                      console.error('HomePage.jsx - Failed to load image in detail modal:', selectedPost.mediaUrls[0]);
+                      e.target.src = 'https://via.placeholder.com/300';
+                    }}
+                    onLoad={() => console.log('HomePage.jsx - Detail modal image loaded successfully:', selectedPost.mediaUrls[0])}
+                  />
+                ) : (
+                  <div className="w-full h-96 bg-gray-200 flex items-center justify-center rounded-lg mb-3">
+                    <Camera className="h-8 w-8 text-gray-400" />
+                  </div>
+                )}
+                {selectedPost.description && (
+                  <p className="text-gray-600 mb-3">{selectedPost.description}</p>
+                )}
+                <div className="mb-3">
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Ingredients</h4>
+                  {selectedPost.ingredients && selectedPost.ingredients.length > 0 ? (
+                    <ul className="list-disc list-inside text-gray-600">
+                      {selectedPost.ingredients.map((ingredient, index) => (
+                        <li key={index} className="text-sm">{ingredient}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No ingredients listed.</p>
+                  )}
+                </div>
+                <div className="mb-3">
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Instructions</h4>
+                  {selectedPost.instructions && selectedPost.instructions.length > 0 ? (
+                    <ol className="list-decimal list-inside text-gray-600">
+                      {selectedPost.instructions.map((instruction, index) => (
+                        <li key={index} className="text-sm">{instruction}</li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No instructions provided.</p>
+                  )}
+                </div>
+                {selectedPost.tags && selectedPost.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedPost.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
       <Footer />
     </div>
