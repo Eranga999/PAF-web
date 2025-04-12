@@ -1,30 +1,39 @@
 package com.skillshare.cooking.controller;
 
+import com.skillshare.cooking.entity.Image;
 import com.skillshare.cooking.entity.Post;
+import com.skillshare.cooking.repository.ImageRepository;
 import com.skillshare.cooking.service.PostService;
+import org.bson.types.Binary;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", exposedHeaders = "Content-Type,Content-Disposition")
 public class PostController {
 
     @Autowired
     private PostService postService;
+
+    @Autowired
+    private ImageRepository imageRepository;
+
     private final String jwtSecret;
 
-    public PostController(PostService postService, @Value("${jwt.secret}") String jwtSecret) {
+    public PostController(PostService postService, ImageRepository imageRepository, @Value("${jwt.secret}") String jwtSecret) {
         this.postService = postService;
+        this.imageRepository = imageRepository;
         this.jwtSecret = jwtSecret;
         System.out.println("PostController - JWT Secret: " + (jwtSecret != null ? jwtSecret : "null"));
         if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
@@ -52,7 +61,9 @@ public class PostController {
 
     @GetMapping("/posts")
     public ResponseEntity<List<Post>> getAllPosts() {
+        System.out.println("Fetching all posts");
         List<Post> posts = postService.getAllPosts();
+        System.out.println("Returning " + posts.size() + " posts");
         return ResponseEntity.ok(posts);
     }
 
@@ -89,6 +100,13 @@ public class PostController {
             if (!existingPost.getUserEmail().equals(email)) {
                 return ResponseEntity.status(403).build();
             }
+            // Delete associated images
+            List<String> imageIds = existingPost.getMediaUrls();
+            if (imageIds != null) {
+                for (String imageId : imageIds) {
+                    imageRepository.deleteById(imageId);
+                }
+            }
             postService.deletePost(id);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
@@ -99,36 +117,55 @@ public class PostController {
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (email == null) {
+            System.err.println("No authenticated user found for file upload");
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body("No file uploaded");
         }
 
         try {
-            String baseDir = System.getProperty("user.dir");
-            String uploadDir = baseDir + File.separator + "uploads" + File.separator;
-            File directory = new File(uploadDir);
-
-            if (!directory.exists()) {
-                boolean created = directory.mkdirs();
-                if (!created) {
-                    return ResponseEntity.status(500).body("Failed to create uploads directory at: " + uploadDir);
-                }
-            }
-
-            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-            String filePath = uploadDir + fileName;
-
-            File destFile = new File(filePath);
-            file.transferTo(destFile);
-
-            String fileUrl = "http://localhost:8080/uploads/" + fileName;
-            return ResponseEntity.ok(fileUrl);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Failed to upload file: " + e.getMessage());
+            Image image = new Image(
+                file.getOriginalFilename(),
+                file.getContentType(),
+                new Binary(file.getBytes())
+            );
+            Image savedImage = imageRepository.save(image);
+            System.out.println("Uploaded image with ID: " + savedImage.getId());
+            return ResponseEntity.ok(savedImage.getId());
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body("Unexpected error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Failed to upload file: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/images/{id}")
+    public ResponseEntity<ByteArrayResource> getImage(@PathVariable String id) {
+        try {
+            System.out.println("Fetching image with ID: " + id);
+            Optional<Image> imageOptional = imageRepository.findById(id);
+            if (imageOptional.isEmpty()) {
+                System.out.println("Image not found with ID: " + id);
+                return ResponseEntity.notFound().build();
+            }
+
+            Image image = imageOptional.get();
+            System.out.println("Found image - FileName: " + image.getFileName() + ", ContentType: " + image.getContentType() + ", Data length: " + (image.getData() != null ? image.getData().length() : 0));
+            
+            ByteArrayResource resource = new ByteArrayResource(image.getData().getData());
+            System.out.println("Returning image data with length: " + resource.contentLength());
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(image.getContentType()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + image.getFileName() + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            System.err.println("Error fetching image with ID " + id + ": " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
         }
     }
 
@@ -137,7 +174,7 @@ public class PostController {
         try {
             String email = SecurityContextHolder.getContext().getAuthentication().getName();
             System.out.println("Fetching posts for user email: " + email);
-            List<Post> userPosts = postService.getPostsByUserEmail(email); // Updated to use getPostsByUserEmail
+            List<Post> userPosts = postService.getPostsByUserEmail(email);
             System.out.println("Returning " + userPosts.size() + " posts for user: " + email);
             return ResponseEntity.ok(userPosts);
         } catch (Exception e) {

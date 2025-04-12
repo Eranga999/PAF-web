@@ -24,13 +24,14 @@ public class Post {
 
     private List<String> instructions;
 
-    private List<String> mediaUrls; // URLs for up to 3 photos or a 30-second video
+    private List<String> mediaUrls; // Now stores image IDs (MongoDB _id of images)
 
-    private List<String> tags; // e.g., #Italian, #Baking
+    private List<String> tags;
 
-    private String createdDate; // ISO 8601 string (e.g., "2025-04-07T00:00:00.000Z")
+    private String createdDate;
 
-    private String userEmail; // Reference to the user who created the post by email
+    @NotBlank(message = "User email is required")
+    private String userEmail;
 
     // Constructors
     public Post() {}
@@ -124,7 +125,7 @@ public class Post {
     public String toString() {
         return "Post{" +
                 "id='" + id + '\'' +
-                ", title='" + title + '\'' +
+                ", title='" + id + '\'' +
                 ", description='" + description + '\'' +
                 ", ingredients=" + ingredients +
                 ", instructions=" + instructions +
