@@ -3,7 +3,6 @@ import { Calendar, LineChart, GraduationCap, Award, Trash2 } from "lucide-react"
 import LearningPlanCard from "../../components/learning/LearningPlanCard.jsx";
 import ProgressCard from "../../components/learning/ProgressCard.jsx";
 
-// Mock Navbar and Footer (replace with your actual components)
 import Navbar from "../../components/Navbar.jsx";
 import Footer from "../../components/Footer.jsx";
 const CulinaryJourneyPage = () => {
