@@ -14,7 +14,7 @@ const postSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
-const PostCard = ({ userId, onPostUpdate }) => {
+const PostCard = ({ onPostUpdate }) => {
   const [open, setOpen] = useState(false);
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,16 +32,18 @@ const PostCard = ({ userId, onPostUpdate }) => {
     },
   });
 
-  // Fetch posts
+  // Fetch all posts
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
+      console.log("Fetching all posts"); // Debug log
       const response = await fetch(`http://localhost:8080/api/posts`);
       if (response.ok) {
         const data = await response.json();
-        setPosts(data.filter((post) => post.userId === userId));
+        console.log("Fetched posts:", data); // Debug log
+        setPosts(data); // No userId filtering
       } else {
-        console.error("Failed to fetch posts:", response.statusText);
+        console.error("Failed to fetch posts, status:", response.status);
       }
     } catch (error) {
       console.error("Error fetching posts:", error);
@@ -52,7 +54,7 @@ const PostCard = ({ userId, onPostUpdate }) => {
 
   useEffect(() => {
     fetchPosts();
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     if (editingPost) {
@@ -63,7 +65,7 @@ const PostCard = ({ userId, onPostUpdate }) => {
         instructions: editingPost.instructions,
         tags: editingPost.tags || [],
       });
-      setMediaFiles(editingPost.mediaUrls ? editingPost.mediaUrls.map(url => ({ url })) : []);
+      setMediaFiles(editingPost.mediaUrls ? editingPost.mediaUrls.map((url) => ({ url })) : []);
     } else {
       setMediaFiles([]);
     }
@@ -76,7 +78,7 @@ const PostCard = ({ userId, onPostUpdate }) => {
       alert("You can upload a maximum of 3 photos!");
       return;
     }
-    setMediaFiles([...mediaFiles, ...files.map(file => ({ file }))]);
+    setMediaFiles([...mediaFiles, ...files.map((file) => ({ file }))]);
   };
 
   // Remove a media file
@@ -93,7 +95,7 @@ const PostCard = ({ userId, onPostUpdate }) => {
           const formData = new FormData();
           formData.append("file", media.file);
 
-          console.log("Uploading file:", media.file.name); // Debug log
+          console.log("Uploading file:", media.file.name);
           const uploadResponse = await fetch("http://localhost:8080/api/upload", {
             method: "POST",
             body: formData,
@@ -101,26 +103,26 @@ const PostCard = ({ userId, onPostUpdate }) => {
 
           if (uploadResponse.ok) {
             const uploadedUrl = await uploadResponse.text();
-            console.log("Upload successful, URL:", uploadedUrl); // Debug log
+            console.log("Upload successful, URL:", uploadedUrl);
             mediaUrls.push(uploadedUrl);
           } else {
-            console.error("Upload failed, status:", uploadResponse.status); // Debug log
+            console.error("Upload failed, status:", uploadResponse.status);
             throw new Error("Failed to upload media");
           }
         } else if (media.url) {
-          console.log("Keeping existing URL:", media.url); // Debug log
+          console.log("Keeping existing URL:", media.url);
           mediaUrls.push(media.url);
         }
       }
 
       const payload = {
         ...data,
-        userId,
+        userId: "temp-user", // Temporary userId until login is added
         createdDate: new Date().toISOString(),
         mediaUrls,
       };
 
-      console.log("Submitting post payload:", JSON.stringify(payload, null, 2)); // Debug log
+      console.log("Submitting post payload:", JSON.stringify(payload, null, 2));
 
       const url = editingPost
         ? `http://localhost:8080/api/posts/${editingPost.id}`
@@ -137,7 +139,7 @@ const PostCard = ({ userId, onPostUpdate }) => {
 
       if (response.ok) {
         const savedPost = await response.json();
-        console.log("Post saved successfully:", savedPost); // Debug log
+        console.log("Post saved successfully:", savedPost);
         await fetchPosts();
         form.reset();
         setEditingPost(null);
@@ -145,7 +147,7 @@ const PostCard = ({ userId, onPostUpdate }) => {
         setMediaFiles([]);
         if (onPostUpdate) onPostUpdate();
       } else {
-        console.error("Failed to save post, status:", response.status); // Debug log
+        console.error("Failed to save post, status:", response.status);
         throw new Error("Failed to save post");
       }
     } catch (error) {
@@ -190,7 +192,7 @@ const PostCard = ({ userId, onPostUpdate }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-bold">Your Posts</h2>
+        <h2 className="text-lg font-bold">Posts</h2>
         <button
           onClick={() => {
             setEditingPost(null);
@@ -389,12 +391,12 @@ const PostCard = ({ userId, onPostUpdate }) => {
         ) : posts.length === 0 ? (
           <div className="text-center py-8 border border-dashed rounded-lg">
             <Camera className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-500">You haven't shared any posts yet</p>
+            <p className="text-gray-500">No posts available yet</p>
             <button
               onClick={() => setOpen(true)}
               className="mt-2 text-blue-500 flex items-center mx-auto"
             >
-              <Plus className="h-4 w-4 mr-1" /> Share your first post
+              <Plus className="h-4 w-4 mr-1" /> Share a post
             </button>
           </div>
         ) : (
@@ -413,9 +415,9 @@ const PostCard = ({ userId, onPostUpdate }) => {
                 <div className={`${post.mediaUrls?.length ? "" : "border-b"} p-4`}>
                   <div className="flex items-center mb-2">
                     <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-                      <span className="text-gray-500">U{post.userId}</span>
+                      <span className="text-gray-500">U{post.userId || "unknown"}</span>
                     </div>
-                    <span className="text-sm text-gray-600">User {post.userId}</span>
+                    <span className="text-sm text-gray-600">User {post.userId || "unknown"}</span>
                   </div>
                   <div className="flex justify-between items-start">
                     <div>
