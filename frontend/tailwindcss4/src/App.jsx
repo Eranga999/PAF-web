@@ -8,12 +8,13 @@ import LearningPlanPage from "./pages/learningplan/LearningPlanPage";
 import PostCard from "./components/Post/PostCard";
 import RecipesPage from "./pages/Recipes/RecipesPage";
 import Login from "./pages/login";
+import ProfilePage from "./pages/ProfilePage";
 // Todo
 import Homepage from "./pages/homepage";
 
 function App() {
   return (
-    <GoogleOAuthProvider clientId="840520138364-ndr0gm76o7hpr726lkqldl2km2floq0h.apps.googleusercontent.com">
+    
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/culinaryjourney" element={<CulinaryJourneyPage />} />
@@ -22,8 +23,10 @@ function App() {
         <Route path="/post" element={<PostCard />} />
         <Route path="/recipes" element={<RecipesPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/profile" element={<ProfilePage />} />
+           
       </Routes>
-    </GoogleOAuthProvider>
+ 
   );
 }
 

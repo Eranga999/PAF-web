@@ -2,12 +2,10 @@ package com.skillshare.cooking.controller;
 
 import com.skillshare.cooking.entity.Post;
 import com.skillshare.cooking.service.PostService;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,15 +21,33 @@ public class PostController {
 
     @Autowired
     private PostService postService;
+    private final String jwtSecret;
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    public PostController(PostService postService, @Value("${jwt.secret}") String jwtSecret) {
+        this.postService = postService;
+        this.jwtSecret = jwtSecret;
+        System.out.println("PostController - JWT Secret: " + (jwtSecret != null ? jwtSecret : "null"));
+        if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
+            throw new IllegalStateException("JWT secret is not configured in application.properties");
+        }
+    }
 
-    // Existing endpoints
     @PostMapping("/posts")
     public ResponseEntity<Post> createPost(@RequestBody Post post) {
-        Post createdPost = postService.createPost(post);
-        return ResponseEntity.ok(createdPost);
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            post.setUserEmail(email);
+            System.out.println("Creating post for user: " + email);
+            Post createdPost = postService.createPost(post);
+            return ResponseEntity.ok(createdPost);
+        } catch (Exception e) {
+            System.err.println("Error creating post: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
     }
 
     @GetMapping("/posts")
@@ -49,14 +65,36 @@ public class PostController {
 
     @PutMapping("/posts/{id}")
     public ResponseEntity<Post> updatePost(@PathVariable String id, @RequestBody Post post) {
-        Post updatedPost = postService.updatePost(id, post);
-        return ResponseEntity.ok(updatedPost);
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            Post existingPost = postService.getPostById(id)
+                    .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
+            if (!existingPost.getUserEmail().equals(email)) {
+                return ResponseEntity.status(403).body(null);
+            }
+            Post updatedPost = postService.updatePost(id, post);
+            return ResponseEntity.ok(updatedPost);
+        } catch (Exception e) {
+            System.err.println("Error updating post: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
     }
 
     @DeleteMapping("/posts/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable String id) {
-        postService.deletePost(id);
-        return ResponseEntity.ok().build();
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            Post existingPost = postService.getPostById(id)
+                    .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
+            if (!existingPost.getUserEmail().equals(email)) {
+                return ResponseEntity.status(403).build();
+            }
+            postService.deletePost(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            System.err.println("Error deleting post: " + e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
     }
 
     @PostMapping("/upload")
@@ -94,22 +132,18 @@ public class PostController {
         }
     }
 
-    // New endpoint to get posts by authenticated user
     @GetMapping("/posts/user")
-    public ResponseEntity<List<Post>> getUserPosts(@RequestHeader("Authorization") String authorization) {
+    public ResponseEntity<List<Post>> getUserPosts() {
         try {
-            // Extract token from "Bearer <token>"
-            String token = authorization.startsWith("Bearer ") ? authorization.substring(7) : authorization;
-            Claims claims = Jwts.parser()
-                    .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-            String userId = claims.get("id", String.class); // Assuming 'id' is stored in JWT claims
-            List<Post> userPosts = postService.getPostsByUserId(userId);
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            System.out.println("Fetching posts for user email: " + email);
+            List<Post> userPosts = postService.getPostsByUserEmail(email); // Updated to use getPostsByUserEmail
+            System.out.println("Returning " + userPosts.size() + " posts for user: " + email);
             return ResponseEntity.ok(userPosts);
         } catch (Exception e) {
-            return ResponseEntity.status(401).body(null); // Unauthorized if token is invalid
+            System.err.println("Error fetching user posts: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(null);
         }
     }
 }

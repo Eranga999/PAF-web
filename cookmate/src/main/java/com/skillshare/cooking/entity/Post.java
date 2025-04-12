@@ -30,13 +30,13 @@ public class Post {
 
     private String createdDate; // ISO 8601 string (e.g., "2025-04-07T00:00:00.000Z")
 
-    private String userId; // Reference to the user who created the post
+    private String userEmail; // Reference to the user who created the post by email
 
     // Constructors
     public Post() {}
 
     public Post(String title, String description, List<String> ingredients, List<String> instructions,
-                List<String> mediaUrls, List<String> tags, String createdDate, String userId) {
+                List<String> mediaUrls, List<String> tags, String createdDate, String userEmail) {
         this.title = title;
         this.description = description;
         this.ingredients = ingredients;
@@ -44,7 +44,7 @@ public class Post {
         this.mediaUrls = mediaUrls;
         this.tags = tags;
         this.createdDate = createdDate;
-        this.userId = userId;
+        this.userEmail = userEmail;
     }
 
     // Getters and Setters
@@ -112,12 +112,12 @@ public class Post {
         this.createdDate = createdDate;
     }
 
-    public String getUserId() {
-        return userId;
+    public String getUserEmail() {
+        return userEmail;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
     }
 
     @Override
@@ -131,7 +131,7 @@ public class Post {
                 ", mediaUrls=" + mediaUrls +
                 ", tags=" + tags +
                 ", createdDate='" + createdDate + '\'' +
-                ", userId='" + userId + '\'' +
+                ", userEmail='" + userEmail + '\'' +
                 '}';
     }
 }

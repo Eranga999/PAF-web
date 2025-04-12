@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.view.RedirectView;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,67 +23,79 @@ import java.util.Map;
 public class AuthController {
 
     private final UserRepository userRepository;
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final String jwtSecret;
 
-    public AuthController(UserRepository userRepository) {
+    public AuthController(UserRepository userRepository, @Value("${jwt.secret}") String jwtSecret) {
         this.userRepository = userRepository;
+        this.jwtSecret = jwtSecret;
+        System.out.println("AuthController - JWT Secret: " + (jwtSecret != null ? jwtSecret : "null"));
+        if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
+            throw new IllegalStateException("JWT secret is not configured in application.properties");
+        }
     }
 
     @GetMapping("/google/success")
     public RedirectView googleLoginSuccess(@AuthenticationPrincipal OAuth2User principal) {
-        System.out.println("Processing /auth/google/success");
-        // Extract user info from OAuth2User
-        String googleId = principal.getAttribute("sub");
-        String email = principal.getAttribute("email");
-        String name = principal.getAttribute("name");
-        System.out.println("Google user info - ID: " + googleId + ", Email: " + email + ", Name: " + name);
+        System.out.println("AuthController - Entered /auth/google/success");
+        try {
+            System.out.println("AuthController - OAuth2User attributes: " + principal.getAttributes());
+            String googleId = principal.getAttribute("sub");
+            String email = principal.getAttribute("email");
+            String name = principal.getAttribute("name");
+            String picture = principal.getAttribute("picture");
+            System.out.println("AuthController - Google user info - ID: " + googleId + ", Email: " + email + ", Name: " + name + ", Picture: " + picture);
 
-        // Ensure googleId is not null
-        if (googleId == null) {
-            System.out.println("Error: Google ID (sub) is null");
-            throw new IllegalStateException("Google ID (sub) cannot be null");
-        }
-
-        // Find or create user in MongoDB
-        User user = userRepository.findByGoogleId(googleId);
-        if (user == null) {
-            // Check if email already exists (to avoid duplicates)
-            User existingUserByEmail = userRepository.findByEmail(email);
-            if (existingUserByEmail != null) {
-                existingUserByEmail.setGoogleId(googleId);
-                existingUserByEmail.setName(name);
-                userRepository.save(existingUserByEmail);
-                user = existingUserByEmail;
-                System.out.println("Updated existing user with email: " + email);
-            } else {
-                user = new User();
-                user.setGoogleId(googleId);
-                user.setEmail(email);
-                user.setName(name);
-                userRepository.save(user);
-                System.out.println("Created new user with email: " + email);
+            if (googleId == null || email == null) {
+                System.out.println("AuthController - Error: Google ID (sub) or email is null");
+                throw new IllegalStateException("Google ID (sub) or email cannot be null");
             }
-        } else {
-            System.out.println("Found existing user with ID: " + user.getId());
+
+            User user = userRepository.findByGoogleId(googleId);
+            if (user == null) {
+                User existingUserByEmail = userRepository.findByEmail(email);
+                if (existingUserByEmail != null) {
+                    existingUserByEmail.setGoogleId(googleId);
+                    existingUserByEmail.setName(name);
+                    existingUserByEmail.setProfilePictureUrl(picture);
+                    userRepository.save(existingUserByEmail);
+                    user = existingUserByEmail;
+                    System.out.println("AuthController - Updated existing user with email: " + email);
+                } else {
+                    user = new User();
+                    user.setGoogleId(googleId);
+                    user.setEmail(email);
+                    user.setName(name);
+                    user.setProfilePictureUrl(picture);
+                    user.setCreatedAt(LocalDateTime.now());
+                    userRepository.save(user);
+                    System.out.println("AuthController - Created new user with email: " + email);
+                }
+            } else {
+                // Update fields for existing user
+                user.setName(name);
+                user.setProfilePictureUrl(picture);
+                userRepository.save(user);
+                System.out.println("AuthController - Updated existing user with ID: " + user.getId());
+            }
+
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("email", user.getEmail());
+            String token = Jwts.builder()
+                    .setClaims(claims)
+                    .setSubject(user.getEmail())
+                    .setIssuedAt(new Date())
+                    .setExpiration(new Date(System.currentTimeMillis() + 24 * 3600000)) // 1 day
+                    .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
+                    .compact();
+            System.out.println("AuthController - Generated JWT token: " + token.substring(0, 10) + "...");
+
+            String redirectUrl = "http://localhost:5173/post?token=" + token;
+            System.out.println("AuthController - Redirecting to: " + redirectUrl);
+            return new RedirectView(redirectUrl);
+        } catch (Exception e) {
+            System.err.println("AuthController - Error in googleLoginSuccess: " + e.getMessage());
+            e.printStackTrace();
+            return new RedirectView("http://localhost:5173/login?error=true");
         }
-
-        // Generate JWT
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("id", user.getId());
-        claims.put("email", user.getEmail());
-        String token = Jwts.builder()
-            .claims(claims)
-            .subject(user.getEmail())
-            .issuedAt(new Date())
-            .expiration(new Date(System.currentTimeMillis() + 3600000))
-            .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
-            .compact();
-        System.out.println("Generated JWT token: " + token);
-
-        // Redirect to frontend PostCard page with token
-        String redirectUrl = "http://localhost:5173/post?token=" + token;
-        System.out.println("Redirecting to: " + redirectUrl);
-        return new RedirectView(redirectUrl);
     }
 }

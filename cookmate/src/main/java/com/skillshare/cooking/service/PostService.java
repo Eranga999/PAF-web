@@ -35,6 +35,8 @@ public class PostService {
         existingPost.setInstructions(post.getInstructions());
         existingPost.setMediaUrls(post.getMediaUrls());
         existingPost.setTags(post.getTags());
+        existingPost.setCreatedDate(post.getCreatedDate());
+        existingPost.setUserEmail(post.getUserEmail());
         return postRepository.save(existingPost);
     }
 
@@ -42,7 +44,7 @@ public class PostService {
         postRepository.deleteById(id);
     }
 
-    public List<Post> getPostsByUserId(String userId) {
-        return postRepository.findByUserId(userId);
+    public List<Post> getPostsByUserEmail(String userEmail) {
+        return postRepository.findByUserEmail(userEmail);
     }
 }
