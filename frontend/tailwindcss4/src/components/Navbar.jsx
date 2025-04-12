@@ -66,7 +66,8 @@ export default function Navbar() {
                 learning plan overview
               </Link>
               <Link 
-                to={`/profile/${user?.id}`} 
+                //to={`/profile/${user?.id}`} 
+                to="/profile"
                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.startsWith("/profile") ? "border-blue-400 text-white" : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"}`}
               >
                 My Profile
