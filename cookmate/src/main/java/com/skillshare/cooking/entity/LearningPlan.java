@@ -5,6 +5,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 @Document(collection = "learning_plans")
@@ -30,7 +32,8 @@ public class LearningPlan {
 
     private String userEmail;
 
-    private boolean isPublic; // New field
+    @JsonProperty("isPublic")
+    private boolean isPublic; // Ensure this field exists
 
     // Nested Topic class
     public static class Topic {
@@ -88,7 +91,9 @@ public class LearningPlan {
     public void setEstimatedEndDate(String estimatedEndDate) { this.estimatedEndDate = estimatedEndDate; }
     public String getUserEmail() { return userEmail; }
     public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
+    @JsonProperty("isPublic")
     public boolean isPublic() { return isPublic; }
+    @JsonProperty("isPublic")
     public void setPublic(boolean isPublic) { this.isPublic = isPublic; }
 
     @Override

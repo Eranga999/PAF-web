@@ -1,4 +1,3 @@
-
 package com.skillshare.cooking.controller;
 
 import com.skillshare.cooking.entity.LearningPlan;
@@ -14,7 +13,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/learning-plans")
-@CrossOrigin(origins = "http://localhost:5173")
 public class LearningPlanController {
 
     @Autowired
@@ -22,6 +20,9 @@ public class LearningPlanController {
 
     @GetMapping
     public ResponseEntity<List<LearningPlan>> getUserLearningPlans(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(null);
+        }
         String userEmail = authentication.getName();
         List<LearningPlan> plans = learningPlanService.getUserLearningPlans(userEmail);
         return ResponseEntity.ok(plans);
@@ -43,8 +44,10 @@ public class LearningPlanController {
     @PostMapping
     public ResponseEntity<LearningPlan> createLearningPlan(
             @Valid @RequestBody LearningPlan learningPlan,
-            Authentication authentication
-    ) {
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(null);
+        }
         String userEmail = authentication.getName();
         LearningPlan createdPlan = learningPlanService.createLearningPlan(learningPlan, userEmail);
         return ResponseEntity.ok(createdPlan);
@@ -54,8 +57,10 @@ public class LearningPlanController {
     public ResponseEntity<LearningPlan> updateLearningPlan(
             @PathVariable String id,
             @Valid @RequestBody LearningPlan updatedPlan,
-            Authentication authentication
-    ) {
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(null);
+        }
         String userEmail = authentication.getName();
         Optional<LearningPlan> existingPlan = learningPlanService.getLearningPlanById(id);
         if (existingPlan.isEmpty()) {
@@ -64,7 +69,7 @@ public class LearningPlanController {
 
         LearningPlan plan = existingPlan.get();
         if (!plan.getUserEmail().equals(userEmail)) {
-            return ResponseEntity.status(403).build(); // Forbidden
+            return ResponseEntity.status(403).body(null); // Forbidden
         }
 
         // Update fields
@@ -81,18 +86,25 @@ public class LearningPlanController {
         int progress = totalTopics > 0 ? (int) Math.round((completedTopics * 100.0) / totalTopics) : 0;
         plan.setProgress(progress);
 
-        LearningPlan savedPlan = learningPlanService.updateLearningPlan(id, plan, userEmail);
-        return ResponseEntity.ok(savedPlan);
+        Optional<LearningPlan> savedPlanOpt = learningPlanService.updateLearningPlan(id, plan, userEmail);
+        if (savedPlanOpt.isEmpty()) {
+            return ResponseEntity.status(403).body(null); // Unauthorized or plan not found
+        }
+        return ResponseEntity.ok(savedPlanOpt.get());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteLearningPlan(
             @PathVariable String id,
-            Authentication authentication
-    ) {
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).build();
+        }
         String userEmail = authentication.getName();
-        learningPlanService.deleteLearningPlan(id, userEmail);
+        boolean deleted = learningPlanService.deleteLearningPlan(id, userEmail);
+        if (!deleted) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok().build();
     }
 }
-

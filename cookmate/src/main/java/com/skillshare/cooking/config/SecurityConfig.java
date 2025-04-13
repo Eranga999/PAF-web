@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -30,12 +31,13 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**", "/login/oauth2/code/google", "/api/posts").permitAll()
-                .requestMatchers("/api/**").authenticated() // Secures /api/learning-plans
-                .anyRequest().authenticated()
+                .requestMatchers("/auth/**", "/api/learning-plans/public").permitAll()
+                .requestMatchers("/api/**").authenticated()
+                .anyRequest().permitAll()
             )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint((request, response, authException) -> {
                     logger.warn("Authentication failed for {}", request.getRequestURI());
@@ -43,23 +45,6 @@ public class SecurityConfig {
                     response.setContentType("application/json");
                     response.getWriter().write("{\"error\": \"Unauthorized\"}");
                 })
-            )
-            .oauth2Login(oauth2 -> oauth2
-                .loginPage("http://localhost:5173/login")
-                .defaultSuccessUrl("/auth/google/success", true)
-                .failureUrl("http://localhost:5173/login?error=true")
-                .successHandler((request, response, authentication) -> {
-                    logger.info("OAuth2 authentication successful, redirecting to /auth/google/success");
-                    response.sendRedirect("/auth/google/success");
-                })
-                .failureHandler((request, response, exception) -> {
-                    logger.error("OAuth2 authentication failed: {}", exception.getMessage());
-                    response.sendRedirect("http://localhost:5173/login?error=true");
-                })
-            )
-            .logout(logout -> logout
-                .logoutSuccessUrl("http://localhost:5173/login")
-                .permitAll()
             );
         return http.build();
     }
