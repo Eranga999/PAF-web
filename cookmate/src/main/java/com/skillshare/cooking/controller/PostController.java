@@ -1,5 +1,6 @@
 package com.skillshare.cooking.controller;
 
+import com.skillshare.cooking.entity.Comment;
 import com.skillshare.cooking.entity.Image;
 import com.skillshare.cooking.entity.Post;
 import com.skillshare.cooking.repository.ImageRepository;
@@ -180,6 +181,35 @@ public class PostController {
         } catch (Exception e) {
             System.err.println("Error fetching user posts: " + e.getMessage());
             e.printStackTrace();
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @PostMapping("/posts/{id}/like")
+    public ResponseEntity<Post> likePost(@PathVariable String id) {
+        try {
+            Post updatedPost = postService.likePost(id);
+            return ResponseEntity.ok(updatedPost);
+        } catch (Exception e) {
+            System.err.println("Error liking post: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @PostMapping("/posts/{id}/comment")
+    public ResponseEntity<Post> addComment(@PathVariable String id, @RequestBody Comment comment) {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            comment.setUserEmail(email);
+            comment.setCreatedDate(new java.util.Date().toString()); // Simple timestamp
+            Post updatedPost = postService.addComment(id, comment);
+            return ResponseEntity.ok(updatedPost);
+        } catch (Exception e) {
+            System.err.println("Error adding comment: " + e.getMessage());
             return ResponseEntity.status(500).body(null);
         }
     }

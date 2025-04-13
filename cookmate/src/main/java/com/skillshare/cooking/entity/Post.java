@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.List;
 
 @Document(collection = "posts")
@@ -24,7 +25,7 @@ public class Post {
 
     private List<String> instructions;
 
-    private List<String> mediaUrls; // Now stores image IDs (MongoDB _id of images)
+    private List<String> mediaUrls;
 
     private List<String> tags;
 
@@ -33,8 +34,15 @@ public class Post {
     @NotBlank(message = "User email is required")
     private String userEmail;
 
+    private int likes; // New field for like count
+
+    private List<Comment> comments; // New field for comments
+
     // Constructors
-    public Post() {}
+    public Post() {
+        this.likes = 0; // Initialize likes
+        this.comments = new ArrayList<>(); // Initialize comments
+    }
 
     public Post(String title, String description, List<String> ingredients, List<String> instructions,
                 List<String> mediaUrls, List<String> tags, String createdDate, String userEmail) {
@@ -46,6 +54,8 @@ public class Post {
         this.tags = tags;
         this.createdDate = createdDate;
         this.userEmail = userEmail;
+        this.likes = 0;
+        this.comments = new ArrayList<>();
     }
 
     // Getters and Setters
@@ -121,11 +131,27 @@ public class Post {
         this.userEmail = userEmail;
     }
 
+    public int getLikes() {
+        return likes;
+    }
+
+    public void setLikes(int likes) {
+        this.likes = likes;
+    }
+
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<Comment> comments) {
+        this.comments = comments;
+    }
+
     @Override
     public String toString() {
         return "Post{" +
                 "id='" + id + '\'' +
-                ", title='" + id + '\'' +
+                ", title='" + title + '\'' +
                 ", description='" + description + '\'' +
                 ", ingredients=" + ingredients +
                 ", instructions=" + instructions +
@@ -133,6 +159,8 @@ public class Post {
                 ", tags=" + tags +
                 ", createdDate='" + createdDate + '\'' +
                 ", userEmail='" + userEmail + '\'' +
+                ", likes=" + likes +
+                ", comments=" + comments +
                 '}';
     }
 }

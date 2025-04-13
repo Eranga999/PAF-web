@@ -1,5 +1,6 @@
 package com.skillshare.cooking.service;
 
+import com.skillshare.cooking.entity.Comment;
 import com.skillshare.cooking.entity.Post;
 import com.skillshare.cooking.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,8 @@ public class PostService {
         existingPost.setTags(post.getTags());
         existingPost.setCreatedDate(post.getCreatedDate());
         existingPost.setUserEmail(post.getUserEmail());
+        existingPost.setLikes(post.getLikes()); // Update likes
+        existingPost.setComments(post.getComments()); // Update comments
         return postRepository.save(existingPost);
     }
 
@@ -46,5 +49,19 @@ public class PostService {
 
     public List<Post> getPostsByUserEmail(String userEmail) {
         return postRepository.findByUserEmail(userEmail);
+    }
+
+    public Post likePost(String id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
+        post.setLikes(post.getLikes() + 1);
+        return postRepository.save(post);
+    }
+
+    public Post addComment(String id, Comment comment) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
+        post.getComments().add(comment);
+        return postRepository.save(post);
     }
 }

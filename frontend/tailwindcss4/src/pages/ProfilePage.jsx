@@ -32,7 +32,8 @@ const ProfilePage = () => {
   const [openPostModal, setOpenPostModal] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
-  const [uploadedFiles, setUploadedFiles] = useState([]); // Stores image IDs
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [commentText, setCommentText] = useState(''); // New state for comment input
   const navigate = useNavigate();
 
   // Profile form
@@ -173,9 +174,9 @@ const ProfilePage = () => {
         instructions: editingPost.instructions,
         tags: editingPost.tags || [],
       });
-      setUploadedFiles(editingPost.mediaUrls || []); // Load existing image IDs
+      setUploadedFiles(editingPost.mediaUrls || []);
     } else {
-      setUploadedFiles([]); // Reset when creating a new post
+      setUploadedFiles([]);
     }
   }, [editingPost, postForm]);
 
@@ -228,7 +229,7 @@ const ProfilePage = () => {
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Submit post (create or update)
+  // Submit post
   const onPostSubmit = async (data) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -238,7 +239,7 @@ const ProfilePage = () => {
 
     const payload = {
       ...data,
-      mediaUrls: uploadedFiles, // Include image IDs
+      mediaUrls: uploadedFiles,
       createdDate: new Date().toISOString(),
     };
 
@@ -286,7 +287,7 @@ const ProfilePage = () => {
   const handleEditPost = (post) => {
     setEditingPost(post);
     setOpenPostModal(true);
-    setSelectedPost(null); // Close the detailed view if open
+    setSelectedPost(null);
   };
 
   // Delete a post
@@ -308,7 +309,7 @@ const ProfilePage = () => {
         });
         if (response.ok) {
           await fetchPosts();
-          setSelectedPost(null); // Close the detailed view if the deleted post was selected
+          setSelectedPost(null);
         }
       } catch (error) {
         console.error('ProfilePage.jsx - Error deleting post:', error);
@@ -316,9 +317,74 @@ const ProfilePage = () => {
     }
   };
 
+  // Like a post
+  const handleLikePost = async (postId) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/posts/${postId}/like`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const updatedPost = await response.json();
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => (post.id === postId ? updatedPost : post))
+        );
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost(updatedPost);
+        }
+      }
+    } catch (error) {
+      console.error('ProfilePage.jsx - Error liking post:', error);
+    }
+  };
+
+  // Add a comment
+  const handleAddComment = async (postId) => {
+    if (!commentText.trim()) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/posts/${postId}/comment`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: commentText }),
+      });
+      if (response.ok) {
+        const updatedPost = await response.json();
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => (post.id === postId ? updatedPost : post))
+        );
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost(updatedPost);
+        }
+        setCommentText('');
+      }
+    } catch (error) {
+      console.error('ProfilePage.jsx - Error adding comment:', error);
+    }
+  };
+
   // Handle post click to show details
   const handlePostClick = (post) => {
     setSelectedPost(post);
+    setCommentText('');
   };
 
   if (isLoading) {
@@ -520,13 +586,19 @@ const ProfilePage = () => {
                     <p className="text-sm font-semibold text-gray-800 truncate">{post.title || 'Untitled Post'}</p>
                   </div>
                   <div className="flex gap-4 mt-1">
-                    <button className="flex items-center gap-1 text-gray-600">
+                    <button
+                      onClick={() => handleLikePost(post.id)}
+                      className="flex items-center gap-1 text-gray-600 hover:text-red-500"
+                    >
                       <Heart className="h-5 w-5" />
-                      <span className="text-sm">247</span>
+                      <span className="text-sm">{post.likes || 0}</span>
                     </button>
-                    <button className="flex items-center gap-1 text-gray-600">
+                    <button
+                      onClick={() => handlePostClick(post)}
+                      className="flex items-center gap-1 text-gray-600"
+                    >
                       <MessageCircle className="h-5 w-5" />
-                      <span className="text-sm">57</span>
+                      <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
                     </button>
                   </div>
                   <div className="absolute top-2 right-2 flex gap-2">
@@ -690,7 +762,7 @@ const ProfilePage = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Tags</label>
                   {postForm.watch('tags').map((_, index) => (
-                    <div key={index} className="flex items-center gap-2 mb-2">
+                    <div key={index} className="flex items-center gap EightVowels: 2 mb-2">
                       <input
                         {...postForm.register(`tags.${index}`)}
                         className="w-full border rounded-md px-3 py-2"
@@ -779,13 +851,26 @@ const ProfilePage = () => {
                     console.error('ProfilePage.jsx - Failed to load image in detail modal:', selectedPost.mediaUrls[0]);
                     e.target.src = 'https://via.placeholder.com/300';
                   }}
-                  onLoad={() => console.log('ProfilePage.jsx - Detail modal image loaded successfully:', post.mediaUrls[0])}
+                  onLoad={() => console.log('ProfilePage.jsx - Detail modal image loaded successfully:', selectedPost.mediaUrls[0])}
                 />
               ) : (
                 <div className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg mb-3">
                   <Camera className="h-8 w-8 text-gray-400" />
                 </div>
               )}
+              <div className="flex gap-4 mb-3">
+                <button
+                  onClick={() => handleLikePost(selectedPost.id)}
+                  className="flex items-center gap-1 text-gray-600 hover:text-red-500"
+                >
+                  <Heart className="h-5 w-5" />
+                  <span className="text-sm">{selectedPost.likes || 0} Likes</span>
+                </button>
+                <button className="flex items-center gap-1 text-gray-600">
+                  <MessageCircle className="h-5 w-5" />
+                  <span className="text-sm">{selectedPost.comments ? selectedPost.comments.length : 0} Comments</span>
+                </button>
+              </div>
               {selectedPost.description && (
                 <p className="text-gray-600 mb-3">{selectedPost.description}</p>
               )}
@@ -814,7 +899,7 @@ const ProfilePage = () => {
                 )}
               </div>
               {selectedPost.tags && selectedPost.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-3">
                   {selectedPost.tags.map((tag, index) => (
                     <span
                       key={index}
@@ -825,6 +910,38 @@ const ProfilePage = () => {
                   ))}
                 </div>
               )}
+              <div className="mb-3">
+                <h4 className="text-sm font-medium text-gray-700 mb-1">Comments</h4>
+                {selectedPost.comments && selectedPost.comments.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedPost.comments.map((comment, index) => (
+                      <div key={index} className="border-t pt-2">
+                        <p className="text-sm font-semibold">{comment.userEmail}</p>
+                        <p className="text-sm text-gray-600">{comment.content}</p>
+                        <p className="text-xs text-gray-500">{comment.createdDate}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No comments yet.</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="w-full border rounded-md px-3 py-2"
+                />
+                <button
+                  onClick={() => handleAddComment(selectedPost.id)}
+                  disabled={!commentText.trim()}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50"
+                >
+                  Post
+                </button>
+              </div>
             </div>
           </div>
         )}
