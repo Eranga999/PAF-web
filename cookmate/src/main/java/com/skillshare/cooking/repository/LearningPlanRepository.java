@@ -3,8 +3,9 @@ package com.skillshare.cooking.repository;
 import com.skillshare.cooking.entity.LearningPlan;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface LearningPlanRepository extends MongoRepository<LearningPlan, String> {
-    Optional<LearningPlan> findByTitle(String title);
+    List<LearningPlan> findByUserEmail(String userEmail);
+    List<LearningPlan> findByIsPublicTrue();
 }

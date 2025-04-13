@@ -1,5 +1,7 @@
 package com.skillshare.cooking.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,6 +18,7 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
@@ -29,13 +32,13 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**", "/login/oauth2/code/google", "/api/posts", "/api/learning-plans").permitAll()
-                .requestMatchers("/api/**").authenticated()
+                .requestMatchers("/auth/**", "/login/oauth2/code/google", "/api/posts").permitAll()
+                .requestMatchers("/api/**").authenticated() // Secures /api/learning-plans
                 .anyRequest().authenticated()
             )
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint((request, response, authException) -> {
-                    System.out.println("Authentication failed for " + request.getRequestURI());
+                    logger.warn("Authentication failed for {}", request.getRequestURI());
                     response.setStatus(401);
                     response.setContentType("application/json");
                     response.getWriter().write("{\"error\": \"Unauthorized\"}");
@@ -46,11 +49,11 @@ public class SecurityConfig {
                 .defaultSuccessUrl("/auth/google/success", true)
                 .failureUrl("http://localhost:5173/login?error=true")
                 .successHandler((request, response, authentication) -> {
-                    System.out.println("OAuth2 authentication successful, redirecting to /auth/google/success");
+                    logger.info("OAuth2 authentication successful, redirecting to /auth/google/success");
                     response.sendRedirect("/auth/google/success");
                 })
                 .failureHandler((request, response, exception) -> {
-                    System.out.println("OAuth2 authentication failed: " + exception.getMessage());
+                    logger.error("OAuth2 authentication failed: {}", exception.getMessage());
                     response.sendRedirect("http://localhost:5173/login?error=true");
                 })
             )
