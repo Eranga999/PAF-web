@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.List;
 
 @Document(collection = "posts")
@@ -24,19 +25,27 @@ public class Post {
 
     private List<String> instructions;
 
-    private List<String> mediaUrls; // URLs for up to 3 photos or a 30-second video
+    private List<String> mediaUrls;
 
-    private List<String> tags; // e.g., #Italian, #Baking
+    private List<String> tags;
 
-    private String createdDate; // ISO 8601 string (e.g., "2025-04-07T00:00:00.000Z")
+    private String createdDate;
 
-    private String userId; // Reference to the user who created the post
+    @NotBlank(message = "User email is required")
+    private String userEmail;
+
+    private List<String> likedBy; // New field to track who liked the post
+
+    private List<Comment> comments;
 
     // Constructors
-    public Post() {}
+    public Post() {
+        this.likedBy = new ArrayList<>();
+        this.comments = new ArrayList<>();
+    }
 
     public Post(String title, String description, List<String> ingredients, List<String> instructions,
-                List<String> mediaUrls, List<String> tags, String createdDate, String userId) {
+                List<String> mediaUrls, List<String> tags, String createdDate, String userEmail) {
         this.title = title;
         this.description = description;
         this.ingredients = ingredients;
@@ -44,7 +53,9 @@ public class Post {
         this.mediaUrls = mediaUrls;
         this.tags = tags;
         this.createdDate = createdDate;
-        this.userId = userId;
+        this.userEmail = userEmail;
+        this.likedBy = new ArrayList<>();
+        this.comments = new ArrayList<>();
     }
 
     // Getters and Setters
@@ -112,12 +123,28 @@ public class Post {
         this.createdDate = createdDate;
     }
 
-    public String getUserId() {
-        return userId;
+    public String getUserEmail() {
+        return userEmail;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
+    }
+
+    public List<String> getLikedBy() {
+        return likedBy;
+    }
+
+    public void setLikedBy(List<String> likedBy) {
+        this.likedBy = likedBy;
+    }
+
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<Comment> comments) {
+        this.comments = comments;
     }
 
     @Override
@@ -131,7 +158,9 @@ public class Post {
                 ", mediaUrls=" + mediaUrls +
                 ", tags=" + tags +
                 ", createdDate='" + createdDate + '\'' +
-                ", userId='" + userId + '\'' +
+                ", userEmail='" + userEmail + '\'' +
+                ", likedBy=" + likedBy +
+                ", comments=" + comments +
                 '}';
     }
 }
