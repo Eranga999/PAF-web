@@ -33,7 +33,7 @@ const ProfilePage = () => {
   const [editingPost, setEditingPost] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [commentText, setCommentText] = useState(''); // New state for comment input
+  const [commentText, setCommentText] = useState('');
   const navigate = useNavigate();
 
   // Profile form
@@ -317,7 +317,7 @@ const ProfilePage = () => {
     }
   };
 
-  // Like a post
+  // Like or unlike a post
   const handleLikePost = async (postId) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -341,9 +341,11 @@ const ProfilePage = () => {
         if (selectedPost && selectedPost.id === postId) {
           setSelectedPost(updatedPost);
         }
+      } else {
+        console.error('ProfilePage.jsx - Failed to like/unlike post');
       }
     } catch (error) {
-      console.error('ProfilePage.jsx - Error liking post:', error);
+      console.error('ProfilePage.jsx - Error liking/unliking post:', error);
     }
   };
 
@@ -387,6 +389,22 @@ const ProfilePage = () => {
     setCommentText('');
   };
 
+  // Get current user's email from token
+  const getCurrentUserEmail = () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.sub || null;
+      } catch (e) {
+        console.error('ProfilePage.jsx - Error decoding token:', e);
+      }
+    }
+    return null;
+  };
+
+  const currentUserEmail = getCurrentUserEmail();
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-6">
@@ -402,436 +420,21 @@ const ProfilePage = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       <Navbar />
-      <main className="flex-grow container mx-auto px-4 py-8 mt-16">
-        {/* Profile Section */}
-        <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              {user.profilePictureUrl ? (
-                <img
-                  src={user.profilePictureUrl}
-                  alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover border-2 border-gray-300"
-                  onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/96';
-                  }}
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
-                  <Camera className="h-8 w-8 text-gray-400" />
-                </div>
-              )}
-            </div>
-            <h2 className="text-xl font-bold">{user.name}</h2>
-            {user.location && <p className="text-gray-600 mt-1">{user.location}</p>}
-            {user.bio && <p className="text-gray-600 mt-2">{user.bio}</p>}
-            <div className="flex justify-center gap-6 mt-4">
-              <div className="text-center">
-                <p className="font-semibold">{posts.length}</p>
-                <p className="text-sm text-gray-500">Posts</p>
-              </div>
-              <div className="text-center">
-                <p className="font-semibold">1.5M</p>
-                <p className="text-sm text-gray-500">Followers</p>
-              </div>
-              <div className="text-center">
-                <p className="font-semibold">71</p>
-                <p className="text-sm text-gray-500">Following</p>
-              </div>
-            </div>
+      {selectedPost ? (
+        // Full-screen post detail view
+        <div className="flex flex-col min-h-screen bg-gray-100">
+          <div className="sticky top-0 bg-white shadow-md z-10 px-4 py-3 flex justify-between items-center">
+            <h2 className="text-xl font-semibold truncate">{selectedPost.title}</h2>
             <button
-              onClick={() => setIsEditingProfile(true)}
-              className="mt-4 bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600"
+              onClick={() => setSelectedPost(null)}
+              className="text-gray-500 hover:text-gray-700"
             >
-              Edit Profile
+              <X className="h-6 w-6" />
             </button>
           </div>
-
-          {/* Edit Profile Form */}
-          {isEditingProfile && (
-            <div className="mt-6">
-              <h2 className="text-xl font-bold mb-4 text-center">Edit Profile</h2>
-              <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Name</label>
-                  <input
-                    {...profileForm.register('name')}
-                    className="w-full border rounded-md px-3 py-2"
-                    placeholder="Your name"
-                  />
-                  {profileForm.formState.errors.name && (
-                    <p className="text-red-500 text-sm">{profileForm.formState.errors.name.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Bio</label>
-                  <textarea
-                    {...profileForm.register('bio')}
-                    className="w-full border rounded-md px-3 py-2 h-20"
-                    placeholder="Tell us about yourself"
-                  />
-                  {profileForm.formState.errors.bio && (
-                    <p className="text-red-500 text-sm">{profileForm.formState.errors.bio.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Location</label>
-                  <input
-                    {...profileForm.register('location')}
-                    className="w-full border rounded-md px-3 py-2"
-                    placeholder="E.g., New York, NY"
-                  />
-                  {profileForm.formState.errors.location && (
-                    <p className="text-red-500 text-sm">{profileForm.formState.errors.location.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Profile Picture URL</label>
-                  <input
-                    {...profileForm.register('profilePictureUrl')}
-                    className="w-full border rounded-md px-3 py-2"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  {profileForm.formState.errors.profilePictureUrl && (
-                    <p className="text-red-500 text-sm">{profileForm.formState.errors.profilePictureUrl.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Favorite Cuisines</label>
-                  {profileForm.watch('favoriteCuisines').map((_, index) => (
-                    <div key={index} className="flex items-center gap-2 mb-2">
-                      <input
-                        {...profileForm.register(`favoriteCuisines.${index}`)}
-                        className="w-full border rounded-md px-3 py-2"
-                        placeholder="E.g., Italian"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeCuisine(index)}
-                        className="text-red-500"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addCuisine}
-                    className="text-blue-500 flex items-center"
-                  >
-                    <Camera className="h-4 w-4 mr-1" /> Add Cuisine
-                  </button>
-                </div>
-
-                <div className="flex justify-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingProfile(false)}
-                    className="bg-gray-200 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={profileForm.formState.isSubmitting}
-                    className="bg-blue-500 text-white px-6 py-2 rounded-md flex items-center disabled:opacity-50"
-                  >
-                    {profileForm.formState.isSubmitting ? (
-                      <Loader2 className="mr-2 animate-spin h-4 w-4" />
-                    ) : (
-                      'Save Changes'
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-
-        {/* Posts Section */}
-        <div className="bg-white rounded-2xl shadow-md p-6 mb-20">
-          <h2 className="text-xl font-bold mb-4">Your Posts</h2>
-          {posts.length > 0 ? (
-            <div className="grid grid-cols-3 gap-4">
-              {posts.map((post) => (
-                <div key={post.id} className="relative">
-                  {post.mediaUrls && post.mediaUrls.length > 0 ? (
-                    <>
-                      {console.log('ProfilePage.jsx - Rendering image for post:', post.id, 'Image ID:', post.mediaUrls[0])}
-                      <img
-                        src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
-                        alt="Post media"
-                        className="w-full h-48 object-cover rounded-lg cursor-pointer"
-                        onError={(e) => {
-                          console.error('ProfilePage.jsx - Failed to load image:', post.mediaUrls[0]);
-                          e.target.src = 'https://via.placeholder.com/150';
-                        }}
-                        onLoad={() => console.log('ProfilePage.jsx - Image loaded successfully:', post.mediaUrls[0])}
-                        onClick={() => handlePostClick(post)}
-                      />
-                    </>
-                  ) : (
-                    <div
-                      className="w-full h-48 bg-gray-200 flex items-center justify-center rounded-lg cursor-pointer"
-                      onClick={() => handlePostClick(post)}
-                    >
-                      <Camera className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                  <div className="mt-2">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{post.title || 'Untitled Post'}</p>
-                  </div>
-                  <div className="flex gap-4 mt-1">
-                    <button
-                      onClick={() => handleLikePost(post.id)}
-                      className="flex items-center gap-1 text-gray-600 hover:text-red-500"
-                    >
-                      <Heart className="h-5 w-5" />
-                      <span className="text-sm">{post.likes || 0}</span>
-                    </button>
-                    <button
-                      onClick={() => handlePostClick(post)}
-                      className="flex items-center gap-1 text-gray-600"
-                    >
-                      <MessageCircle className="h-5 w-5" />
-                      <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
-                    </button>
-                  </div>
-                  <div className="absolute top-2 right-2 flex gap-2">
-                    <button
-                      onClick={() => handleEditPost(post)}
-                      className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
-                    >
-                      <Edit className="h-4 w-4 text-gray-500" />
-                    </button>
-                    <button
-                      onClick={() => handleDeletePost(post.id)}
-                      className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
-                    >
-                      <Trash2 className="h-4 w-4 text-gray-500" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center">No posts yet. Create one to get started!</p>
-          )}
-        </div>
-
-        {/* Floating Action Button */}
-        <button
-          onClick={() => {
-            setEditingPost(null);
-            postForm.reset();
-            setOpenPostModal(true);
-          }}
-          className="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 z-50"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-
-        {/* Post Creation/Editing Modal */}
-        {openPostModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-              <h2 className="text-xl font-semibold">{editingPost ? 'Edit Post' : 'Create a New Post'}</h2>
-              <p className="text-gray-500 mb-6">Share your cooking creations with the community!</p>
-
-              <form onSubmit={postForm.handleSubmit(onPostSubmit)} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Title</label>
-                  <input
-                    {...postForm.register('title')}
-                    className="w-full border rounded-md px-3 py-2"
-                    placeholder="E.g., Homemade Pasta Recipe"
-                  />
-                  {postForm.formState.errors.title && (
-                    <p className="text-red-500 text-sm">{postForm.formState.errors.title.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    {...postForm.register('description')}
-                    className="w-full border rounded-md px-3 py-2 h-20"
-                    placeholder="Describe your dish or cooking experience"
-                  />
-                  {postForm.formState.errors.description && (
-                    <p className="text-red-500 text-sm">{postForm.formState.errors.description.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Ingredients</label>
-                  {postForm.watch('ingredients').map((_, index) => (
-                    <div key={index} className="flex items-center gap-2 mb-2">
-                      <input
-                        {...postForm.register(`ingredients.${index}`)}
-                        className="w-full border rounded-md px-3 py-2"
-                        placeholder={`Ingredient ${index + 1}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeField('ingredients', index)}
-                        className="text-red-500"
-                        disabled={postForm.watch('ingredients').length <= 1}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addField('ingredients')}
-                    className="text-blue-500 flex items-center"
-                  >
-                    <Plus className="h-4 w-4 mr-1" /> Add Ingredient
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Instructions</label>
-                  {postForm.watch('instructions').map((_, index) => (
-                    <div key={index} className="flex items-center gap-2 mb-2">
-                      <input
-                        {...postForm.register(`instructions.${index}`)}
-                        className="w-full border rounded-md px-3 py-2"
-                        placeholder={`Step ${index + 1}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeField('instructions', index)}
-                        className="text-red-500"
-                        disabled={postForm.watch('instructions').length <= 1}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addField('instructions')}
-                    className="text-blue-500 flex items-center"
-                  >
-                    <Plus className="h-4 w-4 mr-1" /> Add Step
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Upload Images (up to 3)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="w-full border rounded-md px-3 py-2"
-                  />
-                  {uploadedFiles.length > 0 && (
-                    <div className="mt-2">
-                      {uploadedFiles.map((imageId, index) => (
-                        <div key={index} className="flex items-center gap-2 mb-2">
-                          <img
-                            src={`http://localhost:8080/api/images/${imageId}`}
-                            alt={`Uploaded ${index}`}
-                            className="w-16 h-16 object-cover rounded"
-                            onError={(e) => {
-                              console.error('ProfilePage.jsx - Failed to load uploaded image:', imageId);
-                              e.target.src = 'https://via.placeholder.com/64';
-                            }}
-                            onLoad={() => console.log('ProfilePage.jsx - Uploaded image loaded successfully:', imageId)}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="text-red-500"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Tags</label>
-                  {postForm.watch('tags').map((_, index) => (
-                    <div key={index} className="flex items-center gap EightVowels: 2 mb-2">
-                      <input
-                        {...postForm.register(`tags.${index}`)}
-                        className="w-full border rounded-md px-3 py-2"
-                        placeholder="#Tag"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeField('tags', index)}
-                        className="text-red-500"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addField('tags')}
-                    className="text-blue-500 flex items-center"
-                  >
-                    <Plus className="h-4 w-4 mr-1" /> Add Tag
-                  </button>
-                </div>
-
-                <div className="flex justify-end gap-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingPost(null);
-                      postForm.reset();
-                      setUploadedFiles([]);
-                      setOpenPostModal(false);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={postForm.formState.isSubmitting}
-                    className="bg-blue-500 text-white px-6 py-2 rounded-md flex items-center disabled:opacity-50"
-                  >
-                    {postForm.formState.isSubmitting ? (
-                      <Loader2 className="mr-2 animate-spin h-4 w-4" />
-                    ) : editingPost ? (
-                      'Update Post'
-                    ) : (
-                      'Create Post'
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Post Detail Modal */}
-        {selectedPost && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">{selectedPost.title}</h2>
-                <button
-                  onClick={() => setSelectedPost(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <div className="flex items-center gap-3 mb-3">
+          <main className="flex-grow container mx-auto px-4 py-6 overflow-y-auto">
+            <div className="bg-white rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                   <span className="text-gray-500 text-sm">
                     {selectedPost.userEmail ? selectedPost.userEmail.charAt(0).toUpperCase() : 'U'}
@@ -846,36 +449,52 @@ const ProfilePage = () => {
                 <img
                   src={`http://localhost:8080/api/images/${selectedPost.mediaUrls[0]}`}
                   alt="Post media"
-                  className="w-full h-64 object-cover rounded-lg mb-3"
+                  className="w-full h-96 object-cover rounded-lg mb-4"
                   onError={(e) => {
-                    console.error('ProfilePage.jsx - Failed to load image in detail modal:', selectedPost.mediaUrls[0]);
+                    console.error('ProfilePage.jsx - Failed to load image in detail view:', selectedPost.mediaUrls[0]);
                     e.target.src = 'https://via.placeholder.com/300';
                   }}
-                  onLoad={() => console.log('ProfilePage.jsx - Detail modal image loaded successfully:', selectedPost.mediaUrls[0])}
+                  onLoad={() => console.log('ProfilePage.jsx - Detail view image loaded successfully:', selectedPost.mediaUrls[0])}
                 />
               ) : (
-                <div className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg mb-3">
-                  <Camera className="h-8 w-8 text-gray-400" />
+                <div className="w-full h-96 bg-gray-200 flex items-center justify-center rounded-lg mb-4">
+                  <Camera className="h-12 w-12 text-gray-400" />
                 </div>
               )}
-              <div className="flex gap-4 mb-3">
+              <div className="flex gap-4 mb-4">
                 <button
                   onClick={() => handleLikePost(selectedPost.id)}
                   className="flex items-center gap-1 text-gray-600 hover:text-red-500"
                 >
-                  <Heart className="h-5 w-5" />
-                  <span className="text-sm">{selectedPost.likes || 0} Likes</span>
+                  <Heart
+                    className={`h-5 w-5 ${selectedPost.likedBy && selectedPost.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
+                  />
+                  <span className="text-sm">{selectedPost.likedBy ? selectedPost.likedBy.length : 0} Likes</span>
                 </button>
                 <button className="flex items-center gap-1 text-gray-600">
                   <MessageCircle className="h-5 w-5" />
                   <span className="text-sm">{selectedPost.comments ? selectedPost.comments.length : 0} Comments</span>
                 </button>
               </div>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Liked By</h4>
+                {selectedPost.likedBy && selectedPost.likedBy.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedPost.likedBy.map((email, index) => (
+                      <span key={index} className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                        {email}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No likes yet.</p>
+                )}
+              </div>
               {selectedPost.description && (
-                <p className="text-gray-600 mb-3">{selectedPost.description}</p>
+                <p className="text-gray-600 mb-4">{selectedPost.description}</p>
               )}
-              <div className="mb-3">
-                <h4 className="text-sm font-medium text-gray-700 mb-1">Ingredients</h4>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Ingredients</h4>
                 {selectedPost.ingredients && selectedPost.ingredients.length > 0 ? (
                   <ul className="list-disc list-inside text-gray-600">
                     {selectedPost.ingredients.map((ingredient, index) => (
@@ -886,8 +505,8 @@ const ProfilePage = () => {
                   <p className="text-gray-500 text-sm">No ingredients listed.</p>
                 )}
               </div>
-              <div className="mb-3">
-                <h4 className="text-sm font-medium text-gray-700 mb-1">Instructions</h4>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Instructions</h4>
                 {selectedPost.instructions && selectedPost.instructions.length > 0 ? (
                   <ol className="list-decimal list-inside text-gray-600">
                     {selectedPost.instructions.map((instruction, index) => (
@@ -899,7 +518,7 @@ const ProfilePage = () => {
                 )}
               </div>
               {selectedPost.tags && selectedPost.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-2 mb-4">
                   {selectedPost.tags.map((tag, index) => (
                     <span
                       key={index}
@@ -910,12 +529,12 @@ const ProfilePage = () => {
                   ))}
                 </div>
               )}
-              <div className="mb-3">
-                <h4 className="text-sm font-medium text-gray-700 mb-1">Comments</h4>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Comments</h4>
                 {selectedPost.comments && selectedPost.comments.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {selectedPost.comments.map((comment, index) => (
-                      <div key={index} className="border-t pt-2">
+                      <div key={index} className="border-t pt-3">
                         <p className="text-sm font-semibold">{comment.userEmail}</p>
                         <p className="text-sm text-gray-600">{comment.content}</p>
                         <p className="text-xs text-gray-500">{comment.createdDate}</p>
@@ -932,21 +551,456 @@ const ProfilePage = () => {
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Add a comment..."
-                  className="w-full border rounded-md px-3 py-2"
+                  className="w-full border rounded-md px-3 py-2 text-sm"
                 />
                 <button
                   onClick={() => handleAddComment(selectedPost.id)}
                   disabled={!commentText.trim()}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50"
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50 text-sm"
                 >
                   Post
                 </button>
               </div>
+              <div className="flex justify-end gap-4 mt-4">
+                <button
+                  onClick={() => handleEditPost(selectedPost)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+                >
+                  Edit Post
+                </button>
+                <button
+                  onClick={() => handleDeletePost(selectedPost.id)}
+                  className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
+                >
+                  Delete Post
+                </button>
+              </div>
             </div>
+          </main>
+          <Footer />
+        </div>
+      ) : (
+        // Main profile content
+        <main className="flex-grow container mx-auto px-4 py-8 mt-16">
+          {/* Profile Section */}
+          <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
+            <div className="text-center">
+              <div className="flex justify-center mb-4">
+                {user.profilePictureUrl ? (
+                  <img
+                    src={user.profilePictureUrl}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover border-2 border-gray-300"
+                    onError={(e) => {
+                      e.target.src = 'https://via.placeholder.com/96';
+                    }}
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
+                    <Camera className="h-8 w-8 text-gray-400" />
+                  </div>
+                )}
+              </div>
+              <h2 className="text-xl font-bold">{user.name}</h2>
+              {user.location && <p className="text-gray-600 mt-1">{user.location}</p>}
+              {user.bio && <p className="text-gray-600 mt-2">{user.bio}</p>}
+              <div className="flex justify-center gap-6 mt-4">
+                <div className="text-center">
+                  <p className="font-semibold">{posts.length}</p>
+                  <p className="text-sm text-gray-500">Posts</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold">1.5M</p>
+                  <p className="text-sm text-gray-500">Followers</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold">71</p>
+                  <p className="text-sm text-gray-500">Following</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditingProfile(true)}
+                className="mt-4 bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600"
+              >
+                Edit Profile
+              </button>
+            </div>
+
+            {/* Edit Profile Form */}
+            {isEditingProfile && (
+              <div className="mt-6">
+                <h2 className="text-xl font-bold mb-4 text-center">Edit Profile</h2>
+                <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Name</label>
+                    <input
+                      {...profileForm.register('name')}
+                      className="w-full border rounded-md px-3 py-2"
+                      placeholder="Your name"
+                    />
+                    {profileForm.formState.errors.name && (
+                      <p className="text-red-500 text-sm">{profileForm.formState.errors.name.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Bio</label>
+                    <textarea
+                      {...profileForm.register('bio')}
+                      className="w-full border rounded-md px-3 py-2 h-20"
+                      placeholder="Tell us about yourself"
+                    />
+                    {profileForm.formState.errors.bio && (
+                      <p className="text-red-500 text-sm">{profileForm.formState.errors.bio.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Location</label>
+                    <input
+                      {...profileForm.register('location')}
+                      className="w-full border rounded-md px-3 py-2"
+                      placeholder="E.g., New York, NY"
+                    />
+                    {profileForm.formState.errors.location && (
+                      <p className="text-red-500 text-sm">{profileForm.formState.errors.location.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Profile Picture URL</label>
+                    <input
+                      {...profileForm.register('profilePictureUrl')}
+                      className="w-full border rounded-md px-3 py-2"
+                      placeholder="https://example.com/image.jpg"
+                    />
+                    {profileForm.formState.errors.profilePictureUrl && (
+                      <p className="text-red-500 text-sm">{profileForm.formState.errors.profilePictureUrl.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Favorite Cuisines</label>
+                    {profileForm.watch('favoriteCuisines').map((_, index) => (
+                      <div key={index} className="flex items-center gap-2 mb-2">
+                        <input
+                          {...profileForm.register(`favoriteCuisines.${index}`)}
+                          className="w-full border rounded-md px-3 py-2"
+                          placeholder="E.g., Italian"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeCuisine(index)}
+                          className="text-red-500"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addCuisine}
+                      className="text-blue-500 flex items-center"
+                    >
+                      <Camera className="h-4 w-4 mr-1" /> Add Cuisine
+                    </button>
+                  </div>
+
+                  <div className="flex justify-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingProfile(false)}
+                      className="bg-gray-200 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={profileForm.formState.isSubmitting}
+                      className="bg-blue-500 text-white px-6 py-2 rounded-md flex items-center disabled:opacity-50"
+                    >
+                      {profileForm.formState.isSubmitting ? (
+                        <Loader2 className="mr-2 animate-spin h-4 w-4" />
+                      ) : (
+                        'Save Changes'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
-        )}
-      </main>
-      <Footer />
+
+          {/* Posts Section */}
+          <div className="bg-white rounded-2xl shadow-md p-6 mb-20">
+            <h2 className="text-xl font-bold mb-4">Your Posts</h2>
+            {posts.length > 0 ? (
+              <div className="grid grid-cols-3 gap-4">
+                {posts.map((post) => (
+                  <div key={post.id} className="relative">
+                    {post.mediaUrls && post.mediaUrls.length > 0 ? (
+                      <>
+                        {console.log('ProfilePage.jsx - Rendering image for post:', post.id, 'Image ID:', post.mediaUrls[0])}
+                        <img
+                          src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
+                          alt="Post media"
+                          className="w-full h-48 object-cover rounded-lg cursor-pointer"
+                          onError={(e) => {
+                            console.error('ProfilePage.jsx - Failed to load image:', post.mediaUrls[0]);
+                            e.target.src = 'https://via.placeholder.com/150';
+                          }}
+                          onLoad={() => console.log('ProfilePage.jsx - Image loaded successfully:', post.mediaUrls[0])}
+                          onClick={() => handlePostClick(post)}
+                        />
+                      </>
+                    ) : (
+                      <div
+                        className="w-full h-48 bg-gray-200 flex items-center justify-center rounded-lg cursor-pointer"
+                        onClick={() => handlePostClick(post)}
+                      >
+                        <Camera className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{post.title || 'Untitled Post'}</p>
+                    </div>
+                    <div className="flex gap-4 mt-1">
+                      <button
+                        onClick={() => handleLikePost(post.id)}
+                        className="flex items-center gap-1 text-gray-600 hover:text-red-500"
+                      >
+                        <Heart
+                          className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
+                        />
+                        <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
+                      </button>
+                      <button
+                        onClick={() => handlePostClick(post)}
+                        className="flex items-center gap-1 text-gray-600"
+                      >
+                        <MessageCircle className="h-5 w-5" />
+                        <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
+                      </button>
+                    </div>
+                    <div className="absolute top-2 right-2 flex gap-2">
+                      <button
+                        onClick={() => handleEditPost(post)}
+                        className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+                      >
+                        <Edit className="h-4 w-4 text-gray-500" />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePost(post.id)}
+                        className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+                      >
+                        <Trash2 className="h-4 w-4 text-gray-500" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center">No posts yet. Create one to get started!</p>
+            )}
+          </div>
+
+          {/* Floating Action Button */}
+          <button
+            onClick={() => {
+              setEditingPost(null);
+              postForm.reset();
+              setOpenPostModal(true);
+            }}
+            className="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 z-50"
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+
+          {/* Post Creation/Editing Modal */}
+          {openPostModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                <h2 className="text-xl font-semibold">{editingPost ? 'Edit Post' : 'Create a New Post'}</h2>
+                <p className="text-gray-500 mb-6">Share your cooking creations with the community!</p>
+
+                <form onSubmit={postForm.handleSubmit(onPostSubmit)} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Title</label>
+                    <input
+                      {...postForm.register('title')}
+                      className="w-full border rounded-md px-3 py-2"
+                      placeholder="E.g., Homemade Pasta Recipe"
+                    />
+                    {postForm.formState.errors.title && (
+                      <p className="text-red-500 text-sm">{postForm.formState.errors.title.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <textarea
+                      {...postForm.register('description')}
+                      className="w-full border rounded-md px-3 py-2 h-20"
+                      placeholder="Describe your dish or cooking experience"
+                    />
+                    {postForm.formState.errors.description && (
+                      <p className="text-red-500 text-sm">{postForm.formState.errors.description.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Ingredients</label>
+                    {postForm.watch('ingredients').map((_, index) => (
+                      <div key={index} className="flex items-center gap-2 mb-2">
+                        <input
+                          {...postForm.register(`ingredients.${index}`)}
+                          className="w-full border rounded-md px-3 py-2"
+                          placeholder={`Ingredient ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeField('ingredients', index)}
+                          className="text-red-500"
+                          disabled={postForm.watch('ingredients').length <= 1}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addField('ingredients')}
+                      className="text-blue-500 flex items-center"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Ingredient
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Instructions</label>
+                    {postForm.watch('instructions').map((_, index) => (
+                      <div key={index} className="flex items-center gap-2 mb-2">
+                        <input
+                          {...postForm.register(`instructions.${index}`)}
+                          className="w-full border rounded-md px-3 py-2"
+                          placeholder={`Step ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeField('instructions', index)}
+                          className="text-red-500"
+                          disabled={postForm.watch('instructions').length <= 1}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addField('instructions')}
+                      className="text-blue-500 flex items-center"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Step
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Upload Images (up to 3)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="w-full border rounded-md px-3 py-2"
+                    />
+                    {uploadedFiles.length > 0 && (
+                      <div className="mt-2">
+                        {uploadedFiles.map((imageId, index) => (
+                          <div key={index} className="flex items-center gap-2 mb-2">
+                            <img
+                              src={`http://localhost:8080/api/images/${imageId}`}
+                              alt={`Uploaded ${index}`}
+                              className="w-16 h-16 object-cover rounded"
+                              onError={(e) => {
+                                console.error('ProfilePage.jsx - Failed to load uploaded image:', imageId);
+                                e.target.src = 'https://via.placeholder.com/64';
+                              }}
+                              onLoad={() => console.log('ProfilePage.jsx - Uploaded image loaded successfully:', imageId)}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="text-red-500"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Tags</label>
+                    {postForm.watch('tags').map((_, index) => (
+                      <div key={index} className="flex items-center gap-2 mb-2">
+                        <input
+                          {...postForm.register(`tags.${index}`)}
+                          className="w-full border rounded-md px-3 py-2"
+                          placeholder="#Tag"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeField('tags', index)}
+                          className="text-red-500"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addField('tags')}
+                      className="text-blue-500 flex items-center"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Tag
+                    </button>
+                  </div>
+
+                  <div className="flex justify-end gap-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingPost(null);
+                        postForm.reset();
+                        setUploadedFiles([]);
+                        setOpenPostModal(false);
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={postForm.formState.isSubmitting}
+                      className="bg-blue-500 text-white px-6 py-2 rounded-md flex items-center disabled:opacity-50"
+                    >
+                      {postForm.formState.isSubmitting ? (
+                        <Loader2 className="mr-2 animate-spin h-4 w-4" />
+                      ) : editingPost ? (
+                        'Update Post'
+                      ) : (
+                        'Create Post'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </main>
+      )}
+      {!selectedPost && <Footer />}
     </div>
   );
 };

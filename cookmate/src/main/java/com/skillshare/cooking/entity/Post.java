@@ -34,14 +34,14 @@ public class Post {
     @NotBlank(message = "User email is required")
     private String userEmail;
 
-    private int likes; // New field for like count
+    private List<String> likedBy; // New field to track who liked the post
 
-    private List<Comment> comments; // New field for comments
+    private List<Comment> comments;
 
     // Constructors
     public Post() {
-        this.likes = 0; // Initialize likes
-        this.comments = new ArrayList<>(); // Initialize comments
+        this.likedBy = new ArrayList<>();
+        this.comments = new ArrayList<>();
     }
 
     public Post(String title, String description, List<String> ingredients, List<String> instructions,
@@ -54,7 +54,7 @@ public class Post {
         this.tags = tags;
         this.createdDate = createdDate;
         this.userEmail = userEmail;
-        this.likes = 0;
+        this.likedBy = new ArrayList<>();
         this.comments = new ArrayList<>();
     }
 
@@ -131,12 +131,12 @@ public class Post {
         this.userEmail = userEmail;
     }
 
-    public int getLikes() {
-        return likes;
+    public List<String> getLikedBy() {
+        return likedBy;
     }
 
-    public void setLikes(int likes) {
-        this.likes = likes;
+    public void setLikedBy(List<String> likedBy) {
+        this.likedBy = likedBy;
     }
 
     public List<Comment> getComments() {
@@ -159,7 +159,7 @@ public class Post {
                 ", tags=" + tags +
                 ", createdDate='" + createdDate + '\'' +
                 ", userEmail='" + userEmail + '\'' +
-                ", likes=" + likes +
+                ", likedBy=" + likedBy +
                 ", comments=" + comments +
                 '}';
     }

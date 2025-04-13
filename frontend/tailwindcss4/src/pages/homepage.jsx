@@ -85,7 +85,7 @@ const HomePage = () => {
     return Math.round((completed / total) * 100);
   };
 
-  // Like a post
+  // Like or unlike a post
   const handleLikePost = async (postId) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -109,9 +109,11 @@ const HomePage = () => {
         if (selectedPost && selectedPost.id === postId) {
           setSelectedPost(updatedPost);
         }
+      } else {
+        console.error('HomePage.jsx - Failed to like/unlike post');
       }
     } catch (error) {
-      console.error('HomePage.jsx - Error liking post:', error);
+      console.error('HomePage.jsx - Error liking/unliking post:', error);
     }
   };
 
@@ -158,6 +160,22 @@ const HomePage = () => {
     fetchPosts();
     fetchLearningPlans();
   }, []);
+
+  // Get current user's email from token (assuming token contains email)
+  const getCurrentUserEmail = () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.sub || null;
+      } catch (e) {
+        console.error('HomePage.jsx - Error decoding token:', e);
+      }
+    }
+    return null;
+  };
+
+  const currentUserEmail = getCurrentUserEmail();
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
@@ -208,13 +226,29 @@ const HomePage = () => {
                   onClick={() => handleLikePost(selectedPost.id)}
                   className="flex items-center gap-1 text-gray-600 hover:text-red-500"
                 >
-                  <Heart className="h-5 w-5" />
-                  <span className="text-sm">{selectedPost.likes || 0} Likes</span>
+                  <Heart
+                    className={`h-5 w-5 ${selectedPost.likedBy && selectedPost.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
+                  />
+                  <span className="text-sm">{selectedPost.likedBy ? selectedPost.likedBy.length : 0} Likes</span>
                 </button>
                 <button className="flex items-center gap-1 text-gray-600">
                   <MessageCircle className="h-5 w-5" />
                   <span className="text-sm">{selectedPost.comments ? selectedPost.comments.length : 0} Comments</span>
                 </button>
+              </div>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Liked By</h4>
+                {selectedPost.likedBy && selectedPost.likedBy.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedPost.likedBy.map((email, index) => (
+                      <span key={index} className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                        {email}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No likes yet.</p>
+                )}
               </div>
               {selectedPost.description && (
                 <p className="text-gray-600 mb-4">{selectedPost.description}</p>
@@ -391,8 +425,10 @@ const HomePage = () => {
                       onClick={() => handleLikePost(post.id)}
                       className="flex items-center gap-1 text-gray-600 hover:text-red-500"
                     >
-                      <Heart className="h-5 w-5" />
-                      <span className="text-sm">{post.likes || 0}</span>
+                      <Heart
+                        className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
+                      />
+                      <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
                     </button>
                     <button
                       onClick={() => handlePostClick(post)}

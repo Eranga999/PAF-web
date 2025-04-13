@@ -101,7 +101,6 @@ public class PostController {
             if (!existingPost.getUserEmail().equals(email)) {
                 return ResponseEntity.status(403).build();
             }
-            // Delete associated images
             List<String> imageIds = existingPost.getMediaUrls();
             if (imageIds != null) {
                 for (String imageId : imageIds) {
@@ -188,7 +187,12 @@ public class PostController {
     @PostMapping("/posts/{id}/like")
     public ResponseEntity<Post> likePost(@PathVariable String id) {
         try {
-            Post updatedPost = postService.likePost(id);
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            Post updatedPost = postService.likePost(id, email);
             return ResponseEntity.ok(updatedPost);
         } catch (Exception e) {
             System.err.println("Error liking post: " + e.getMessage());
@@ -205,7 +209,7 @@ public class PostController {
                 return ResponseEntity.status(401).body(null);
             }
             comment.setUserEmail(email);
-            comment.setCreatedDate(new java.util.Date().toString()); // Simple timestamp
+            comment.setCreatedDate(new java.util.Date().toString());
             Post updatedPost = postService.addComment(id, comment);
             return ResponseEntity.ok(updatedPost);
         } catch (Exception e) {

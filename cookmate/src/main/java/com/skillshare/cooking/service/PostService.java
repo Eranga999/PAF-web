@@ -38,8 +38,8 @@ public class PostService {
         existingPost.setTags(post.getTags());
         existingPost.setCreatedDate(post.getCreatedDate());
         existingPost.setUserEmail(post.getUserEmail());
-        existingPost.setLikes(post.getLikes()); // Update likes
-        existingPost.setComments(post.getComments()); // Update comments
+        existingPost.setLikedBy(post.getLikedBy());
+        existingPost.setComments(post.getComments());
         return postRepository.save(existingPost);
     }
 
@@ -51,10 +51,18 @@ public class PostService {
         return postRepository.findByUserEmail(userEmail);
     }
 
-    public Post likePost(String id) {
+    public Post likePost(String id, String userEmail) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
-        post.setLikes(post.getLikes() + 1);
+        List<String> likedBy = post.getLikedBy();
+        if (likedBy.contains(userEmail)) {
+            // User already liked, so unlike by removing their email
+            likedBy.remove(userEmail);
+        } else {
+            // User hasn't liked, so add their email
+            likedBy.add(userEmail);
+        }
+        post.setLikedBy(likedBy);
         return postRepository.save(post);
     }
 
