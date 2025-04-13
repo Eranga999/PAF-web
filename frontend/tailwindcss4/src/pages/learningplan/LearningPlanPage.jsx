@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -194,30 +195,10 @@ const LearningPlanPage = () => {
         throw new Error(`Failed to ${isEditingPlan ? "update" : "create"} learning plan: ${errorText}`);
       }
 
-      const updatedPlan = await response.json();
-      if (isEditingPlan) {
-        setUserPlans(
-          userPlans.map((plan) =>
-            plan.id === currentPlanId ? updatedPlan : plan
-          )
-        );
-        if (updatedPlan.isPublic) {
-          setCommunityPlans(
-            communityPlans
-              .filter((plan) => plan.id !== currentPlanId)
-              .concat(updatedPlan)
-          );
-        } else {
-          setCommunityPlans(
-            communityPlans.filter((plan) => plan.id !== currentPlanId)
-          );
-        }
-      } else {
-        setUserPlans([...userPlans, updatedPlan]);
-        if (updatedPlan.isPublic) {
-          setCommunityPlans([...communityPlans, updatedPlan]);
-        }
-      }
+      // Refetch plans to update the UI
+      await fetchUserPlans(token);
+      await fetchCommunityPlans(token);
+
       setIsCreatingPlan(false);
       setIsEditingPlan(false);
       setCurrentPlanId(null);
@@ -258,6 +239,7 @@ const LearningPlanPage = () => {
         return;
       }
 
+      // Update the learning plan with new topic completion status
       const updatePlanResponse = await fetch(`http://localhost:8080/api/learning-plans/${planId}`, {
         method: "PUT",
         headers: {
@@ -283,10 +265,12 @@ const LearningPlanPage = () => {
 
       const updatedPlan = await updatePlanResponse.json();
 
+      // Calculate progress
       const totalTopics = updatedTopics.length;
       const completedTopics = updatedTopics.filter((t) => t.completed).length;
       const progressPercentage = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
+      // Create a progress update
       const progressUpdateResponse = await fetch("http://localhost:8080/api/progress-updates", {
         method: "POST",
         headers: {
@@ -310,15 +294,9 @@ const LearningPlanPage = () => {
         throw new Error(`Failed to create progress update: ${errorText}`);
       }
 
-      const updatedProgressPlan = { ...updatedPlan, progress: progressPercentage };
-      setUserPlans(
-        userPlans.map((p) => (p.id === planId ? updatedProgressPlan : p))
-      );
-      if (updatedProgressPlan.isPublic) {
-        setCommunityPlans(
-          communityPlans.map((p) => (p.id === planId ? updatedProgressPlan : p))
-        );
-      }
+      // Refetch plans to update the UI with the new progress
+      await fetchUserPlans(token);
+      await fetchCommunityPlans(token);
     } catch (err) {
       console.error("Error toggling topic completion:", err);
       setError(`Failed to update topic completion: ${err.message}`);
@@ -839,3 +817,4 @@ const LearningPlanPage = () => {
 };
 
 export default LearningPlanPage;
+

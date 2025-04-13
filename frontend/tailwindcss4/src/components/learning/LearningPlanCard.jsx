@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
-import { Plus, Book, PenSquare, Trash2, PlusCircle, XCircle, Loader2 } from "lucide-react";
+import { useState, useEffect, Component } from "react";
+import { Plus, Book, PenSquare, Trash2, PlusCircle, XCircle, Loader2, Calendar } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import ProgressCard from "./ProgressCard";
+import { format, isValid } from "date-fns";
 
 const learningPlanSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -19,12 +18,25 @@ const learningPlanSchema = z.object({
   total: z.coerce.number().default(0),
 });
 
-const LearningPlanCard = ({ onProgressUpdate }) => { // Ensure onProgressUpdate is passed as a prop
+class ErrorBoundary extends Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <div className="text-red-500 p-4">Something went wrong with this plan.</div>;
+    }
+    return this.props.children;
+  }
+}
+
+const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
   const [open, setOpen] = useState(false);
   const [selectedStartDate, setSelectedStartDate] = useState(null);
   const [selectedEndDate, setSelectedEndDate] = useState(null);
-  const [plans, setPlans] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
 
   const form = useForm({
@@ -40,50 +52,96 @@ const LearningPlanCard = ({ onProgressUpdate }) => { // Ensure onProgressUpdate 
     },
   });
 
-  const fetchPlans = async () => {
-    setIsLoading(true);
+  const safeFormatDate = (dateString) => {
+    if (!dateString) return "Not set";
     try {
-      const response = await fetch("http://localhost:8080/api/learning-plans");
-      if (response.ok) {
-        const data = await response.json();
-        setPlans(data);
-      } else {
-        console.error("Failed to fetch plans:", response.statusText);
-      }
-    } catch (error) {
-      console.error("Error fetching plans:", error);
-    } finally {
-      setIsLoading(false);
+      const date = new Date(dateString);
+      return isValid(date) ? format(date, "MMM d, yyyy") : "Not set";
+    } catch {
+      return "Not set";
     }
   };
 
   useEffect(() => {
-    fetchPlans();
-  }, []);
-
-  useEffect(() => {
     if (editingPlan) {
       form.reset({
-        title: editingPlan.title,
-        description: editingPlan.description,
-        topics: editingPlan.topics,
+        title: editingPlan.title || "",
+        description: editingPlan.description || "",
+        topics: editingPlan.topics && editingPlan.topics.length > 0
+          ? editingPlan.topics
+          : [{ title: "", completed: false }],
         startDate: editingPlan.startDate ? new Date(editingPlan.startDate) : null,
         estimatedEndDate: editingPlan.estimatedEndDate ? new Date(editingPlan.estimatedEndDate) : null,
-        progress: editingPlan.progress,
-        total: editingPlan.total,
+        progress: editingPlan.progress || 0,
+        total: editingPlan.total || 0,
       });
       setSelectedStartDate(editingPlan.startDate ? new Date(editingPlan.startDate) : null);
       setSelectedEndDate(editingPlan.estimatedEndDate ? new Date(editingPlan.estimatedEndDate) : null);
     }
   }, [editingPlan, form]);
 
+  const handleToggleTopic = async (planId, topicIndex) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Authentication required to update topics. Please try again.");
+      return;
+    }
+
+    try {
+      const plan = plans.find((p) => p.id === planId);
+      if (!plan) {
+        throw new Error("Learning plan not found");
+      }
+
+      const updatedTopics = [...plan.topics];
+      updatedTopics[topicIndex].completed = !updatedTopics[topicIndex].completed;
+
+      const completedCount = updatedTopics.filter((topic) => topic.completed).length;
+      const totalTopics = updatedTopics.length;
+      const newProgress = totalTopics > 0 ? Math.round((completedCount / totalTopics) * 100) : 0;
+
+      const response = await fetch(`http://localhost:8080/api/learning-plans/${planId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...plan,
+          topics: updatedTopics,
+          progress: newProgress,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          alert("Your session has expired. Please try again or contact support.");
+          return;
+        }
+        throw new Error("Failed to update learning plan");
+      }
+
+      alert("Topic updated successfully!");
+      onProgressUpdate();
+    } catch (error) {
+      console.error("Error updating topic:", error);
+      alert(`Error updating topic: ${error.message}`);
+    }
+  };
+
   const onSubmit = async (data) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Authentication required to create or update a learning plan.");
+      return;
+    }
+
     const payload = {
       ...data,
       startDate: data.startDate ? format(data.startDate, "yyyy-MM-dd") : null,
       estimatedEndDate: data.estimatedEndDate ? format(data.estimatedEndDate, "yyyy-MM-dd") : null,
     };
-    console.log("Request payload:", payload);
+
     try {
       const url = editingPlan
         ? `http://localhost:8080/api/learning-plans/${editingPlan.id}`
@@ -94,30 +152,29 @@ const LearningPlanCard = ({ onProgressUpdate }) => { // Ensure onProgressUpdate 
         method,
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
 
-      if (response.ok) {
-        const updatedPlan = await response.json();
-        if (editingPlan) {
-          setPlans(plans.map((plan) => (plan.id === updatedPlan.id ? updatedPlan : plan)));
-        } else {
-          setPlans([...plans, updatedPlan]);
+      if (!response.ok) {
+        if (response.status === 401) {
+          alert("Your session has expired. Please try again or contact support.");
+          return;
         }
-        form.reset();
-        setSelectedStartDate(null);
-        setSelectedEndDate(null);
-        setEditingPlan(null);
-        setOpen(false);
-      } else {
-        const errorText = await response.text();
-        console.error(editingPlan ? "Failed to update learning plan" : "Failed to create learning plan", response.status, errorText);
-        alert(`Error: ${errorText || "Failed to create learning plan"}`);
+        throw new Error(`${editingPlan ? "Failed to update" : "Failed to create"} learning plan`);
       }
+
+      alert(`${editingPlan ? "Plan updated" : "Plan created"} successfully!`);
+      onProgressUpdate();
+      form.reset();
+      setSelectedStartDate(null);
+      setSelectedEndDate(null);
+      setEditingPlan(null);
+      setOpen(false);
     } catch (error) {
-      console.error("Error creating learning plan:", error);
-      alert("Failed to create learning plan. Please check if the backend server is running and try again.");
+      console.error("Error creating/updating learning plan:", error);
+      alert(`Failed to ${editingPlan ? "update" : "create"} learning plan: ${error.message}`);
     }
   };
 
@@ -137,40 +194,160 @@ const LearningPlanCard = ({ onProgressUpdate }) => { // Ensure onProgressUpdate 
   };
 
   const handleDeletePlan = async (planId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Authentication required to delete a learning plan.");
+      return;
+    }
+
     if (window.confirm("Are you sure you want to delete this learning plan?")) {
       try {
         const response = await fetch(`http://localhost:8080/api/learning-plans/${planId}`, {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
-        if (response.ok) {
-          setPlans(plans.filter((plan) => plan.id !== planId));
-        } else {
-          console.error("Failed to delete learning plan:", response.statusText);
+        if (!response.ok) {
+          if (response.status === 401) {
+            alert("Your session has expired. Please try again or contact support.");
+            return;
+          }
+          throw new Error("Failed to delete learning plan");
         }
+        alert("Plan deleted successfully!");
+        onProgressUpdate();
       } catch (error) {
         console.error("Error deleting plan:", error);
+        alert(`Error deleting plan: ${error.message}`);
       }
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md">
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold">Your Learning Plans</h2>
-          <button
-            onClick={() => {
-              setEditingPlan(null);
-              form.reset();
-              setOpen(true);
-            }}
-            className="bg-blue-500 text-white px-3 py-1 rounded-md flex items-center hover:bg-blue-600"
-          >
-            <Plus className="h-4 w-4 mr-1" /> New Plan
-          </button>
+    <ErrorBoundary>
+      <div className="bg-white rounded-lg shadow-md">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold">Your Learning Plans</h2>
+            <button
+              onClick={() => {
+                setEditingPlan(null);
+                form.reset();
+                setOpen(true);
+              }}
+              className="bg-blue-500 text-white px-3 py-1 rounded-md flex items-center hover:bg-blue-600"
+            >
+              <Plus className="h-4 w-4 mr-1" /> New Plan
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="animate-spin h-6 w-6 border-t-2 border-blue-500 rounded-full"></div>
+            </div>
+          ) : plans.length === 0 ? (
+            <div className="text-center py-8 border border-dashed rounded-lg">
+              <Book className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-500">You don't have any learning plans yet</p>
+              <p className="text-sm text-gray-400 mt-1 mb-4">Create one to track your culinary journey</p>
+              <button
+                onClick={() => setOpen(true)}
+                className="border border-gray-300 px-3 py-1 rounded-md text-sm hover:bg-gray-50"
+              >
+                <Plus className="h-4 w-4 mr-1 inline" /> Create your first plan
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {plans.map((plan) => (
+                <div key={plan.id} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">{plan.title}</h4>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEditPlan(plan)} className="p-1 hover:bg-gray-100 rounded">
+                        <PenSquare className="h-4 w-4 text-gray-500" />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePlan(plan.id)}
+                        className="p-1 hover:bg-gray-100 rounded"
+                      >
+                        <Trash2 className="h-4 w-4 text-gray-500" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-600 mt-1">{plan.description}</p>
+
+                  <div className="mt-2">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs text-gray-500">Progress</span>
+                      <span className="text-xs text-gray-500">{plan.progress || 0}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${plan.progress || 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2">
+                    <span className="text-xs text-gray-500">Topics to Learn</span>
+                    <ul className="mt-1 space-y-1">
+                      {plan.topics && plan.topics.map((topic, index) => (
+                        <li key={index} className="flex items-center">
+                          <button
+                            onClick={() => handleToggleTopic(plan.id, index)}
+                            className={`h-5 w-5 rounded-full mr-2 ${
+                              topic.completed ? "bg-green-500" : "border-2 border-gray-300"
+                            }`}
+                          >
+                            {topic.completed && (
+                              <svg
+                                className="h-5 w-5 text-white"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                            )}
+                          </button>
+                          <span className={topic.completed ? "line-through text-gray-500" : ""}>
+                            {topic.title}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="mt-2 flex items-center text-xs text-gray-500">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    {safeFormatDate(plan.startDate)} - {safeFormatDate(plan.estimatedEndDate)}
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  setEditingPlan(null);
+                  form.reset();
+                  setOpen(true);
+                }}
+                className="w-full border border-dashed rounded-lg p-3 text-gray-500 hover:bg-gray-50 flex items-center justify-center"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Create a new learning plan
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Modal for creating/editing plan */}
         {open && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg w-full max-w-2xl">
@@ -247,7 +424,7 @@ const LearningPlanCard = ({ onProgressUpdate }) => { // Ensure onProgressUpdate 
                         type="date"
                         value={selectedStartDate ? format(selectedStartDate, "yyyy-MM-dd") : ""}
                         onChange={(e) => {
-                          const date = new Date(e.target.value);
+                          const date = e.target.value ? new Date(e.target.value) : null;
                           setSelectedStartDate(date);
                           form.setValue("startDate", date);
                         }}
@@ -260,7 +437,7 @@ const LearningPlanCard = ({ onProgressUpdate }) => { // Ensure onProgressUpdate 
                         type="date"
                         value={selectedEndDate ? format(selectedEndDate, "yyyy-MM-dd") : ""}
                         onChange={(e) => {
-                          const date = new Date(e.target.value);
+                          const date = e.target.value ? new Date(e.target.value) : null;
                           setSelectedEndDate(date);
                           form.setValue("estimatedEndDate", date);
                         }}
@@ -302,78 +479,8 @@ const LearningPlanCard = ({ onProgressUpdate }) => { // Ensure onProgressUpdate 
             </div>
           </div>
         )}
-
-        {/* Plans list */}
-        <div>
-          {isLoading ? (
-            <div className="flex justify-center py-6">
-              <div className="animate-spin h-6 w-6 border-t-2 border-blue-500 rounded-full"></div>
-            </div>
-          ) : plans.length === 0 ? (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <Book className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-              <p className="text-gray-500">You don't have any learning plans yet</p>
-              <p className="text-sm text-gray-400 mt-1 mb-4">Create one to track your culinary journey</p>
-              <button
-                onClick={() => setOpen(true)}
-                className="border border-gray-300 px-3 py-1 rounded-md text-sm hover:bg-gray-50"
-              >
-                <Plus className="h-4 w-4 mr-1 inline" /> Create your first plan
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {plans.map((plan) => (
-                <div key={plan.id} className="border rounded-lg p-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">{plan.title}</h4>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleEditPlan(plan)} className="p-1 hover:bg-gray-100 rounded">
-                        <PenSquare className="h-4 w-4 text-gray-500" />
-                      </button>
-                      <button
-                        onClick={() => handleDeletePlan(plan.id)}
-                        className="p-1 hover:bg-gray-100 rounded"
-                      >
-                        <Trash2 className="h-4 w-4 text-gray-500" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mt-2">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-xs text-gray-500">Progress</span>
-                      <span className="text-xs text-gray-500">{plan.progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${plan.progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={() => {
-                  setEditingPlan(null);
-                  form.reset();
-                  setOpen(true);
-                }}
-                className="w-full border border-dashed rounded-lg p-3 text-gray-500 hover:bg-gray-50 flex items-center justify-center"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Create a new learning plan
-              </button>
-            </div>
-          )}
-        </div>
       </div>
-
-      <div className="mt-4">
-        <ProgressCard onProgressUpdate={onProgressUpdate} />
-      </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 
