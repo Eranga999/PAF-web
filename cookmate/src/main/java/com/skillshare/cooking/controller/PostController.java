@@ -1,54 +1,220 @@
 package com.skillshare.cooking.controller;
 
+import com.skillshare.cooking.entity.Comment;
+import com.skillshare.cooking.entity.Image;
 import com.skillshare.cooking.entity.Post;
+import com.skillshare.cooking.repository.ImageRepository;
 import com.skillshare.cooking.service.PostService;
+import org.bson.types.Binary;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/posts")
-@CrossOrigin(origins = "http://localhost:5173")
+@RequestMapping("/api")
+@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", exposedHeaders = "Content-Type,Content-Disposition")
 public class PostController {
 
     @Autowired
     private PostService postService;
 
-    // Create a new post
-    @PostMapping
-    public ResponseEntity<Post> createPost(@RequestBody Post post) {
-        Post createdPost = postService.createPost(post);
-        return ResponseEntity.ok(createdPost);
+    @Autowired
+    private ImageRepository imageRepository;
+
+    private final String jwtSecret;
+
+    public PostController(PostService postService, ImageRepository imageRepository, @Value("${jwt.secret}") String jwtSecret) {
+        this.postService = postService;
+        this.imageRepository = imageRepository;
+        this.jwtSecret = jwtSecret;
+        System.out.println("PostController - JWT Secret: " + (jwtSecret != null ? jwtSecret : "null"));
+        if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
+            throw new IllegalStateException("JWT secret is not configured in application.properties");
+        }
     }
 
-    // Get all posts
-    @GetMapping
+    @PostMapping("/posts")
+    public ResponseEntity<Post> createPost(@RequestBody Post post) {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            post.setUserEmail(email);
+            System.out.println("Creating post for user: " + email);
+            Post createdPost = postService.createPost(post);
+            return ResponseEntity.ok(createdPost);
+        } catch (Exception e) {
+            System.err.println("Error creating post: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @GetMapping("/posts")
     public ResponseEntity<List<Post>> getAllPosts() {
+        System.out.println("Fetching all posts");
         List<Post> posts = postService.getAllPosts();
+        System.out.println("Returning " + posts.size() + " posts");
         return ResponseEntity.ok(posts);
     }
 
-    // Get a post by ID
-    @GetMapping("/{id}")
+    @GetMapping("/posts/{id}")
     public ResponseEntity<Post> getPostById(@PathVariable String id) {
         return postService.getPostById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Update a post by ID
-    @PutMapping("/{id}")
+    @PutMapping("/posts/{id}")
     public ResponseEntity<Post> updatePost(@PathVariable String id, @RequestBody Post post) {
-        Post updatedPost = postService.updatePost(id, post);
-        return ResponseEntity.ok(updatedPost);
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            Post existingPost = postService.getPostById(id)
+                    .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
+            if (!existingPost.getUserEmail().equals(email)) {
+                return ResponseEntity.status(403).body(null);
+            }
+            Post updatedPost = postService.updatePost(id, post);
+            return ResponseEntity.ok(updatedPost);
+        } catch (Exception e) {
+            System.err.println("Error updating post: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
     }
 
-    // Delete a post by ID
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/posts/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable String id) {
-        postService.deletePost(id);
-        return ResponseEntity.ok().build();
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            Post existingPost = postService.getPostById(id)
+                    .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
+            if (!existingPost.getUserEmail().equals(email)) {
+                return ResponseEntity.status(403).build();
+            }
+            List<String> imageIds = existingPost.getMediaUrls();
+            if (imageIds != null) {
+                for (String imageId : imageIds) {
+                    imageRepository.deleteById(imageId);
+                }
+            }
+            postService.deletePost(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            System.err.println("Error deleting post: " + e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PostMapping("/upload")
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (email == null) {
+            System.err.println("No authenticated user found for file upload");
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body("No file uploaded");
+        }
+
+        try {
+            Image image = new Image(
+                file.getOriginalFilename(),
+                file.getContentType(),
+                new Binary(file.getBytes())
+            );
+            Image savedImage = imageRepository.save(image);
+            System.out.println("Uploaded image with ID: " + savedImage.getId());
+            return ResponseEntity.ok(savedImage.getId());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Failed to upload file: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/images/{id}")
+    public ResponseEntity<ByteArrayResource> getImage(@PathVariable String id) {
+        try {
+            System.out.println("Fetching image with ID: " + id);
+            Optional<Image> imageOptional = imageRepository.findById(id);
+            if (imageOptional.isEmpty()) {
+                System.out.println("Image not found with ID: " + id);
+                return ResponseEntity.notFound().build();
+            }
+
+            Image image = imageOptional.get();
+            System.out.println("Found image - FileName: " + image.getFileName() + ", ContentType: " + image.getContentType() + ", Data length: " + (image.getData() != null ? image.getData().length() : 0));
+            
+            ByteArrayResource resource = new ByteArrayResource(image.getData().getData());
+            System.out.println("Returning image data with length: " + resource.contentLength());
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(image.getContentType()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + image.getFileName() + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            System.err.println("Error fetching image with ID " + id + ": " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @GetMapping("/posts/user")
+    public ResponseEntity<List<Post>> getUserPosts() {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            System.out.println("Fetching posts for user email: " + email);
+            List<Post> userPosts = postService.getPostsByUserEmail(email);
+            System.out.println("Returning " + userPosts.size() + " posts for user: " + email);
+            return ResponseEntity.ok(userPosts);
+        } catch (Exception e) {
+            System.err.println("Error fetching user posts: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @PostMapping("/posts/{id}/like")
+    public ResponseEntity<Post> likePost(@PathVariable String id) {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            Post updatedPost = postService.likePost(id, email);
+            return ResponseEntity.ok(updatedPost);
+        } catch (Exception e) {
+            System.err.println("Error liking post: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @PostMapping("/posts/{id}/comment")
+    public ResponseEntity<Post> addComment(@PathVariable String id, @RequestBody Comment comment) {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            comment.setUserEmail(email);
+            comment.setCreatedDate(new java.util.Date().toString());
+            Post updatedPost = postService.addComment(id, comment);
+            return ResponseEntity.ok(updatedPost);
+        } catch (Exception e) {
+            System.err.println("Error adding comment: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
     }
 }
