@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -29,6 +30,7 @@ public class UserController {
             System.out.println("Fetching profile for user email: " + email);
             User user = userService.getUserByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
+            System.out.println("Returning user with profilePictureUrl: " + user.getProfilePictureUrl());
             return ResponseEntity.ok(user);
         } catch (Exception e) {
             System.err.println("Error fetching profile: " + e.getMessage());
@@ -41,7 +43,9 @@ public class UserController {
         try {
             String email = SecurityContextHolder.getContext().getAuthentication().getName();
             System.out.println("Updating profile for user email: " + email);
+            System.out.println("New profilePictureUrl: " + updatedUser.getProfilePictureUrl());
             User user = userService.updateUser(email, updatedUser);
+            System.out.println("Updated user with profilePictureUrl: " + user.getProfilePictureUrl());
             return ResponseEntity.ok(user);
         } catch (Exception e) {
             System.err.println("Error updating profile: " + e.getMessage());
@@ -77,6 +81,28 @@ public class UserController {
         } catch (Exception e) {
             System.err.println("Error fetching user posts: " + e.getMessage());
             return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @PostMapping("/profile/picture")
+    public ResponseEntity<String> uploadProfilePicture(@RequestParam("file") MultipartFile file) {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found for profile picture upload");
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest().body("No file uploaded");
+            }
+
+            String imageId = userService.uploadProfilePicture(email, file);
+            System.out.println("Uploaded profile picture with ID: " + imageId + " for user: " + email);
+            return ResponseEntity.ok("http://localhost:8080/api/images/" + imageId);
+        } catch (Exception e) {
+            System.err.println("Error uploading profile picture: " + e.getMessage());
+            return ResponseEntity.status(500).body("Failed to upload profile picture: " + e.getMessage());
         }
     }
 }

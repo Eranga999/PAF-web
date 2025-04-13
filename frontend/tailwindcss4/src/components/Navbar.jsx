@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { ChefHat, Menu, Plus, LogOut, User, BookOpen } from "lucide-react";
+import { ChefHat, Menu, LogOut, User, BookOpen } from "lucide-react";
 
 export default function Navbar() {
   const location = useLocation();
@@ -9,7 +9,6 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Fetch user data for profile pic and details
   useEffect(() => {
     const fetchUser = async () => {
       const token = localStorage.getItem("token");
@@ -25,6 +24,7 @@ export default function Navbar() {
             const data = await response.json();
             setUser(data);
             console.log("Navbar - Fetched user:", data);
+            console.log("Navbar - Profile picture URL:", data.profilePictureUrl);
           } else {
             console.error("Navbar - Fetch user failed:", response.status);
             localStorage.removeItem("token");
@@ -119,31 +119,21 @@ export default function Navbar() {
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <Link
-              to="/post"
-              className="ml-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
-            >
-              <Plus className="mr-2 h-4 w-4" /> New Post
-            </Link>
             {user && (
               <div className="ml-3 relative">
                 <button
                   className="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center overflow-hidden"
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                 >
-                  {user.profilePictureUrl ? (
-                    <img
-                      src={user.profilePictureUrl}
-                      alt="Profile"
-                      className="h-8 w-8 object-cover"
-                      onError={(e) => {
-                        e.target.src = "https://via.placeholder.com/32";
-                        console.log("Navbar - Profile picture load failed");
-                      }}
-                    />
-                  ) : (
-                    <User className="h-5 w-5 text-white" />
-                  )}
+                  <img
+                    src={user.profilePictureUrl}
+                    alt="Profile"
+                    className="h-8 w-8 object-cover"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/150";
+                      console.log("Navbar - Profile picture load failed");
+                    }}
+                  />
                 </button>
                 <div
                   className={`absolute right-0 mt-2 w-48 bg-gray-700 shadow-lg rounded-md ${

@@ -45,6 +45,10 @@ public class AuthController {
             String picture = principal.getAttribute("picture");
             System.out.println("AuthController - Google user info - ID: " + googleId + ", Email: " + email + ", Name: " + name + ", Picture: " + picture);
 
+            // Set a default profile picture if picture is null or empty
+            String profilePictureUrl = (picture != null && !picture.trim().isEmpty()) ? picture : "https://via.placeholder.com/150";
+            System.out.println("AuthController - Using profile picture URL: " + profilePictureUrl);
+
             if (googleId == null || email == null) {
                 System.out.println("AuthController - Error: Google ID (sub) or email is null");
                 throw new IllegalStateException("Google ID (sub) or email cannot be null");
@@ -56,7 +60,7 @@ public class AuthController {
                 if (existingUserByEmail != null) {
                     existingUserByEmail.setGoogleId(googleId);
                     existingUserByEmail.setName(name);
-                    existingUserByEmail.setProfilePictureUrl(picture);
+                    existingUserByEmail.setProfilePictureUrl(profilePictureUrl);
                     userRepository.save(existingUserByEmail);
                     user = existingUserByEmail;
                     System.out.println("AuthController - Updated existing user with email: " + email);
@@ -65,7 +69,7 @@ public class AuthController {
                     user.setGoogleId(googleId);
                     user.setEmail(email);
                     user.setName(name);
-                    user.setProfilePictureUrl(picture);
+                    user.setProfilePictureUrl(profilePictureUrl);
                     user.setCreatedAt(LocalDateTime.now());
                     userRepository.save(user);
                     System.out.println("AuthController - Created new user with email: " + email);
@@ -73,7 +77,7 @@ public class AuthController {
             } else {
                 // Update fields for existing user
                 user.setName(name);
-                user.setProfilePictureUrl(picture);
+                user.setProfilePictureUrl(profilePictureUrl);
                 userRepository.save(user);
                 System.out.println("AuthController - Updated existing user with ID: " + user.getId());
             }
@@ -89,7 +93,7 @@ public class AuthController {
                     .compact();
             System.out.println("AuthController - Generated JWT token: " + token.substring(0, 10) + "...");
 
-            String redirectUrl = "http://localhost:5173/post?token=" + token;
+            String redirectUrl = "http://localhost:5173/login?token=" + token;
             System.out.println("AuthController - Redirecting to: " + redirectUrl);
             return new RedirectView(redirectUrl);
         } catch (Exception e) {

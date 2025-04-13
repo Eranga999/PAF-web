@@ -9,7 +9,7 @@ const HomePage = () => {
   const [learningPlans, setLearningPlans] = useState([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
-  const [selectedPost, setSelectedPost] = useState(null); // State for selected post
+  const [selectedPost, setSelectedPost] = useState(null);
   const navigate = useNavigate();
 
   // Fetch all posts from all users
@@ -23,14 +23,13 @@ const HomePage = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        // Fetch user names for each post
         const postsWithNames = await Promise.all(
           data.map(async (post) => {
             try {
               const userResponse = await fetch(`http://localhost:8080/api/profile/email/${post.userEmail}`, {
                 headers: {
                   'Content-Type': 'application/json',
-                  Authorization: `Bearer ${localStorage.getItem('token')}`, // Include token if required
+                  Authorization: `Bearer ${localStorage.getItem('token')}`,
                 },
               });
               if (userResponse.ok) {
@@ -56,7 +55,6 @@ const HomePage = () => {
     }
   };
 
-  // Fetch learning plans
   const fetchLearningPlans = async () => {
     setIsLoadingPlans(true);
     try {
@@ -79,7 +77,6 @@ const HomePage = () => {
     }
   };
 
-  // Calculate progress for learning plans
   const calculateProgress = (plan) => {
     if (!plan.topics || plan.topics.length === 0) return 0;
     const total = plan.topics.length;
@@ -87,12 +84,10 @@ const HomePage = () => {
     return Math.round((completed / total) * 100);
   };
 
-  // Handle post click to show details
   const handlePostClick = (post) => {
     setSelectedPost(post);
   };
 
-  // Initial fetch
   useEffect(() => {
     fetchPosts();
     fetchLearningPlans();
@@ -102,10 +97,8 @@ const HomePage = () => {
     <div className="flex flex-col min-h-screen bg-gray-100">
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8 mt-16">
-        {/* Discover Header */}
         <h1 className="text-2xl font-bold mb-6">Discover</h1>
 
-        {/* Horizontal Learning Plans Section */}
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-4">Your Learning Plans</h2>
           {isLoadingPlans ? (
@@ -156,7 +149,6 @@ const HomePage = () => {
           )}
         </div>
 
-        {/* Vertical Posts Feed */}
         <div className="space-y-6 mb-20">
           {isLoadingPosts ? (
             <div className="flex justify-center py-4">
@@ -194,7 +186,10 @@ const HomePage = () => {
                     <span className="text-gray-400">No Image</span>
                   </div>
                 )}
-                <div className="flex gap-4">
+                <div className="mt-2">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{post.title || 'Untitled Post'}</p>
+                </div>
+                <div className="flex gap-4 mt-1">
                   <button className="flex items-center gap-1 text-gray-600">
                     <Heart className="h-5 w-5" />
                     <span className="text-sm">247</span>
@@ -219,13 +214,12 @@ const HomePage = () => {
 
         {/* Floating Action Button */}
         <button
-          onClick={() => navigate('/profile')}
+          onClick={() => navigate('/profile')} // Changed from '/post' to '/profile'
           className="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 z-50"
         >
           <Plus className="h-6 w-6" />
         </button>
 
-        {/* Post Detail Modal */}
         {selectedPost && (
           <div className="fixed inset-0 flex flex-col z-50">
             <div className="flex-grow bg-white p-6 overflow-y-auto">

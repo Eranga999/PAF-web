@@ -16,8 +16,8 @@ const Login = () => {
     if (token) {
       console.log('Login.jsx - Saving token:', token.substring(0, 10) + '...');
       localStorage.setItem('token', token);
-      console.log('Login.jsx - Navigating to /post');
-      navigate('/post', { replace: true });
+      console.log('Login.jsx - Navigating to /');
+      navigate('/', { replace: true }); // Changed from '/post' to '/'
     } else if (error) {
       console.error('Login.jsx - Error:', error);
       localStorage.removeItem('token');
