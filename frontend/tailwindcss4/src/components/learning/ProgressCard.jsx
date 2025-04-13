@@ -13,7 +13,7 @@ const progressSchema = z.object({
 
 const ProgressCard = ({ onProgressUpdate }) => {
   const [open, setOpen] = useState(false);
-  const [progressValue, setProgressValue] = useState(50);
+  const [progressValue, setProgressValue] = useState(0);
   const [plans, setPlans] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [progressUpdates, setProgressUpdates] = useState([]);
@@ -24,7 +24,7 @@ const ProgressCard = ({ onProgressUpdate }) => {
       title: "",
       description: "",
       planId: "",
-      progressPercentage: 50,
+      progressPercentage: 0,
     },
   });
 
@@ -47,7 +47,16 @@ const ProgressCard = ({ onProgressUpdate }) => {
     fetchPlans();
   }, []);
 
-  // Fetch progress updates when a plan is selected
+  // Reset progress value when the modal opens
+  useEffect(() => {
+    if (open) {
+      setProgressValue(0);
+      form.setValue("progressPercentage", 0);
+      setSelectedPlanId("");
+    }
+  }, [open, form]);
+
+  // Fetch progress updates and set progress when a plan is selected
   useEffect(() => {
     if (selectedPlanId) {
       const fetchProgressUpdates = async () => {
@@ -65,10 +74,20 @@ const ProgressCard = ({ onProgressUpdate }) => {
         }
       };
       fetchProgressUpdates();
+
+      // Set the progress value based on the selected plan's progress
+      const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
+      if (selectedPlan) {
+        const newProgressValue = selectedPlan.progress || 0;
+        setProgressValue(newProgressValue);
+        form.setValue("progressPercentage", newProgressValue);
+      }
     } else {
       setProgressUpdates([]);
+      setProgressValue(0);
+      form.setValue("progressPercentage", 0);
     }
-  }, [selectedPlanId]);
+  }, [selectedPlanId, plans, form]);
 
   const onSubmit = async (data) => {
     try {
@@ -87,8 +106,8 @@ const ProgressCard = ({ onProgressUpdate }) => {
         console.log("Progress update created:", newProgressUpdate);
         form.reset();
         setOpen(false);
-        setProgressValue(50);
-        // Refresh progress updates for the selected plan
+        setProgressValue(0);
+        setSelectedPlanId("");
         if (data.planId) {
           const response = await fetch(`http://localhost:8080/api/progress-updates/plan/${data.planId}`);
           if (response.ok) {
@@ -99,7 +118,6 @@ const ProgressCard = ({ onProgressUpdate }) => {
             console.error("Failed to refresh progress updates:", response.status, await response.text());
           }
         }
-        // Notify parent component to refresh
         if (onProgressUpdate) {
           onProgressUpdate();
         }
@@ -115,7 +133,6 @@ const ProgressCard = ({ onProgressUpdate }) => {
 
   return (
     <div>
-      {/* Trigger Button */}
       <button
         onClick={() => setOpen(true)}
         className="flex items-center justify-center w-full py-2 border border-gray-300 rounded-md text-sm text-gray-500 hover:text-blue-500 hover:bg-gray-50 transition-colors"
@@ -124,21 +141,19 @@ const ProgressCard = ({ onProgressUpdate }) => {
         <span>Share Progress Update</span>
       </button>
 
-      {/* Dialog/Modal */}
       {open && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Share Learning Progress</h3>
 
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* Title Field */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Skill / Achievement Title
                 </label>
                 <input
                   {...form.register("title")}
-                  className="w-full border rounded-md px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="e.g., Knife Skills Mastery"
                 />
                 {form.formState.errors.title && (
@@ -148,14 +163,13 @@ const ProgressCard = ({ onProgressUpdate }) => {
                 )}
               </div>
 
-              {/* Description Field */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   What did you learn or accomplish?
                 </label>
                 <textarea
                   {...form.register("description")}
-                  className="w-full border rounded-md px-3 py-2 h-32"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 h-32 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="e.g., Today I mastered the julienne cut! It took a lot of practice, but I can now cut vegetables into perfect matchsticks."
                 />
                 {form.formState.errors.description && (
@@ -165,7 +179,6 @@ const ProgressCard = ({ onProgressUpdate }) => {
                 )}
               </div>
 
-              {/* Learning Plan Select */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Related Learning Plan (optional)
@@ -176,7 +189,7 @@ const ProgressCard = ({ onProgressUpdate }) => {
                     setSelectedPlanId(e.target.value);
                     form.setValue("planId", e.target.value);
                   }}
-                  className="w-full border rounded-md px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">None</option>
                   {plans.map((plan) => (
@@ -187,9 +200,8 @@ const ProgressCard = ({ onProgressUpdate }) => {
                 </select>
               </div>
 
-              {/* Progress Slider */}
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-2">
                   Progress: {progressValue}%
                 </label>
                 <input
@@ -198,11 +210,8 @@ const ProgressCard = ({ onProgressUpdate }) => {
                   max="100"
                   step="5"
                   value={progressValue}
-                  onChange={(e) => {
-                    setProgressValue(parseInt(e.target.value));
-                    form.setValue("progressPercentage", parseInt(e.target.value));
-                  }}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  disabled // Disable the slider
+                  className="w-full h-2 rounded-full custom-slider opacity-50 cursor-not-allowed"
                 />
                 {form.formState.errors.progressPercentage && (
                   <p className="text-red-500 text-sm">
@@ -211,13 +220,12 @@ const ProgressCard = ({ onProgressUpdate }) => {
                 )}
               </div>
 
-              {/* Display Progress Updates */}
               {progressUpdates.length > 0 && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium mb-2">Recent Progress Updates</h4>
                   <ul className="space-y-2">
                     {progressUpdates.map((update) => (
-                      <li key={update.id} className="border p-2 rounded-md">
+                      <li key={update.id} className="border border-gray-200 p-2 rounded-md">
                         <p className="text-sm font-medium">{update.title}</p>
                         <p className="text-sm text-gray-600">{update.description}</p>
                         <p className="text-sm text-gray-500">Progress: {update.progressPercentage}%</p>
@@ -227,7 +235,6 @@ const ProgressCard = ({ onProgressUpdate }) => {
                 </div>
               )}
 
-              {/* Footer Buttons */}
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
@@ -247,6 +254,50 @@ const ProgressCard = ({ onProgressUpdate }) => {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .custom-slider {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 100%;
+          height: 8px;
+          background: #e5e7eb; /* Tailwind's gray-200 */
+          border-radius: 9999px; /* Tailwind's rounded-full */
+          outline: none;
+        }
+
+        .custom-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 20px;
+          height: 20px;
+          background: #3b82f6; /* Tailwind's blue-500 */
+          border-radius: 50%;
+          cursor: not-allowed; /* Reflect disabled state */
+        }
+
+        .custom-slider::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          background: #3b82f6; /* Tailwind's blue-500 */
+          border-radius: 50%;
+          cursor: not-allowed; /* Reflect disabled state */
+        }
+
+        .custom-slider::-webkit-slider-runnable-track {
+          width: 100%;
+          height: 8px;
+          background: #e5e7eb; /* Tailwind's gray-200 */
+          border-radius: 9999px; /* Tailwind's rounded-full */
+        }
+
+        .custom-slider::-moz-range-track {
+          width: 100%;
+          height: 8px;
+          background: #e5e7eb; /* Tailwind's gray-200 */
+          border-radius: 9999px; /* Tailwind's rounded-full */
+        }
+      `}</style>
     </div>
   );
 };
