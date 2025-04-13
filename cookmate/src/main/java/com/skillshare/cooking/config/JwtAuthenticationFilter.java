@@ -31,42 +31,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String header = request.getHeader("Authorization");
-        if (header == null || !header.startsWith("Bearer ")) {
-            logger.debug("No Bearer token found in request");
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String token = header.substring(7);
-        try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-            String email = claims.getSubject();
-            if (email != null) {
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        email, null, Collections.emptyList());
-                SecurityContextHolder.getContext().setAuthentication(auth);
-                logger.debug("JWT validated successfully for user: {}", email);
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7);
+            try {
+                Claims claims = Jwts.parser()
+                        .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
+                        .build()
+                        .parseSignedClaims(token)
+                        .getPayload();
+                String email = claims.getSubject();
+                if (email != null) {
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            email, null, Collections.emptyList());
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    logger.debug("JWT validated successfully for user: {}", email);
+                }
+            } catch (Exception e) {
+                logger.error("JWT validation failed: {}", e.getMessage());
+                SecurityContextHolder.clearContext();
             }
-            filterChain.doFilter(request, response);
-        } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            logger.error("JWT expired: {}", e.getMessage());
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Token expired\"}");
-        } catch (io.jsonwebtoken.JwtException e) {
-            logger.error("JWT validation failed: {}", e.getMessage());
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Invalid token\"}");
-        } catch (Exception e) {
-            logger.error("Unexpected error during JWT validation: {}", e.getMessage());
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Unauthorized\"}");
         }
+        filterChain.doFilter(request, response);
     }
 }
