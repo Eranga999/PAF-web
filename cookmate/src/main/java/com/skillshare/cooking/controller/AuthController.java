@@ -85,12 +85,15 @@ public class AuthController {
             Map<String, Object> claims = new HashMap<>();
             claims.put("email", user.getEmail());
             String token = Jwts.builder()
-                    .setClaims(claims)
-                    .setSubject(user.getEmail())
-                    .setIssuedAt(new Date())
-                    .setExpiration(new Date(System.currentTimeMillis() + 24 * 3600000)) // 1 day
-                    .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
-                    .compact();
+            .claims()
+                .add("email", user.getEmail()) // add any custom claims here
+                .subject(user.getEmail())      // set subject
+                .issuedAt(new Date())          // set issued at
+                .expiration(new Date(System.currentTimeMillis() + 24 * 3600000)) // 1 day expiration
+                .and() // exits claims builder
+            .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
+            .compact();
+    
             System.out.println("AuthController - Generated JWT token: " + token.substring(0, 10) + "...");
 
             String redirectUrl = "http://localhost:5173/login?token=" + token;
