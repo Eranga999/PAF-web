@@ -5,7 +5,6 @@ import com.skillshare.cooking.repository.LearningPlanRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,56 +21,44 @@ public class LearningPlanService {
     }
 
     public List<LearningPlan> getUserLearningPlans(String userEmail) {
-        try {
-            return learningPlanRepository.findByUserEmail(userEmail);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch user learning plans: " + e.getMessage(), e);
-        }
+        return learningPlanRepository.findByUserEmail(userEmail);
     }
 
     public List<LearningPlan> getPublicLearningPlans() {
-        try {
-            return learningPlanRepository.findByIsPublicTrue();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch public learning plans: " + e.getMessage(), e);
-        }
+        return learningPlanRepository.findByIsPublicTrue();
     }
 
     public Optional<LearningPlan> getLearningPlanById(String id) {
-        try {
-            return learningPlanRepository.findById(id);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch learning plan by ID: " + e.getMessage(), e);
-        }
+        return learningPlanRepository.findById(id);
     }
 
-    public LearningPlan updateLearningPlan(String id, LearningPlan learningPlan, String userEmail) {
-        Optional<LearningPlan> existingPlan = getLearningPlanById(id);
+    public Optional<LearningPlan> updateLearningPlan(String id, LearningPlan learningPlan, String userEmail) {
+        Optional<LearningPlan> existingPlan = learningPlanRepository.findById(id);
         if (existingPlan.isPresent() && existingPlan.get().getUserEmail().equals(userEmail)) {
             learningPlan.setId(id);
             learningPlan.setUserEmail(userEmail);
             learningPlan.setPublic(learningPlan.isPublic());
-            return learningPlanRepository.save(learningPlan);
+            return Optional.of(learningPlanRepository.save(learningPlan));
         }
-        throw new RuntimeException("Learning Plan not found or unauthorized");
+        return Optional.empty();
     }
 
-    public void deleteLearningPlan(String id, String userEmail) {
-        Optional<LearningPlan> existingPlan = getLearningPlanById(id);
+    public boolean deleteLearningPlan(String id, String userEmail) {
+        Optional<LearningPlan> existingPlan = learningPlanRepository.findById(id);
         if (existingPlan.isPresent() && existingPlan.get().getUserEmail().equals(userEmail)) {
             learningPlanRepository.deleteById(id);
-        } else {
-            throw new RuntimeException("Learning Plan not found or unauthorized");
+            return true;
         }
+        return false;
     }
 
-    public LearningPlan updateProgress(String id, int progress, String userEmail) {
-        Optional<LearningPlan> optionalPlan = getLearningPlanById(id);
+    public Optional<LearningPlan> updateProgress(String id, int progress, String userEmail) {
+        Optional<LearningPlan> optionalPlan = learningPlanRepository.findById(id);
         if (optionalPlan.isPresent() && optionalPlan.get().getUserEmail().equals(userEmail)) {
             LearningPlan plan = optionalPlan.get();
             plan.setProgress(progress);
-            return learningPlanRepository.save(plan);
+            return Optional.of(learningPlanRepository.save(plan));
         }
-        throw new RuntimeException("Learning Plan not found or unauthorized");
+        return Optional.empty();
     }
 }

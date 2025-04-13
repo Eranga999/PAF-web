@@ -8,12 +8,10 @@ const progressSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   planId: z.string().optional(),
-  progressPercentage: z.number().min(1).max(100),
 });
 
 const ProgressCard = ({ onProgressUpdate }) => {
   const [open, setOpen] = useState(false);
-  const [progressValue, setProgressValue] = useState(0);
   const [plans, setPlans] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [progressUpdates, setProgressUpdates] = useState([]);
@@ -24,110 +22,129 @@ const ProgressCard = ({ onProgressUpdate }) => {
       title: "",
       description: "",
       planId: "",
-      progressPercentage: 0,
     },
   });
 
-  // Fetch plans from the backend
   useEffect(() => {
     const fetchPlans = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Authentication required to fetch learning plans.");
+        return;
+      }
+
       try {
-        const response = await fetch("http://localhost:8080/api/learning-plans");
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Fetched plans in ProgressCard:", data);
-          setPlans(data);
-        } else {
-          console.error("Failed to fetch plans:", response.status, await response.text());
+        const response = await fetch("http://localhost:8080/api/learning-plans", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) {
+          if (response.status === 401) {
+            alert("Your session has expired. Please try again or contact support.");
+            return;
+          }
+          throw new Error("Failed to fetch plans");
         }
+        const data = await response.json();
+        setPlans(data);
       } catch (error) {
         console.error("Error fetching plans:", error);
+        alert(`Error fetching plans: ${error.message}`);
       }
     };
     fetchPlans();
   }, []);
 
-  // Reset progress value when the modal opens
   useEffect(() => {
     if (open) {
-      setProgressValue(0);
-      form.setValue("progressPercentage", 0);
       setSelectedPlanId("");
+      form.reset();
     }
   }, [open, form]);
 
-  // Fetch progress updates and set progress when a plan is selected
   useEffect(() => {
     if (selectedPlanId) {
       const fetchProgressUpdates = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          alert("Authentication required to fetch progress updates.");
+          return;
+        }
+
         try {
-          const response = await fetch(`http://localhost:8080/api/progress-updates/plan/${selectedPlanId}`);
-          if (response.ok) {
-            const data = await response.json();
-            console.log("Fetched progress updates in ProgressCard:", data);
-            setProgressUpdates(data);
-          } else {
-            console.error("Failed to fetch progress updates:", response.status, await response.text());
+          const response = await fetch(`http://localhost:8080/api/progress-updates/plan/${selectedPlanId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+          if (!response.ok) {
+            if (response.status === 401) {
+              alert("Your session has expired. Please try again or contact support.");
+              return;
+            }
+            throw new Error("Failed to fetch progress updates");
           }
+          const data = await response.json();
+          setProgressUpdates(data);
         } catch (error) {
           console.error("Error fetching progress updates:", error);
+          alert(`Error fetching progress updates: ${error.message}`);
         }
       };
       fetchProgressUpdates();
-
-      // Set the progress value based on the selected plan's progress
-      const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
-      if (selectedPlan) {
-        const newProgressValue = selectedPlan.progress || 0;
-        setProgressValue(newProgressValue);
-        form.setValue("progressPercentage", newProgressValue);
-      }
     } else {
       setProgressUpdates([]);
-      setProgressValue(0);
-      form.setValue("progressPercentage", 0);
     }
-  }, [selectedPlanId, plans, form]);
+  }, [selectedPlanId]);
 
   const onSubmit = async (data) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Authentication required to share progress.");
+      return;
+    }
+
     try {
+      const selectedPlan = plans.find((plan) => plan.id === data.planId);
+      const progressPercentage = selectedPlan
+        ? Math.round(
+            (selectedPlan.topics.filter((t) => t.completed).length / selectedPlan.topics.length) * 100
+          )
+        : 0;
+
       const response = await fetch("http://localhost:8080/api/progress-updates", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           ...data,
-          planId: data.planId ? data.planId : undefined,
+          planId: data.planId || undefined,
+          progressPercentage,
         }),
       });
-      if (response.ok) {
-        const newProgressUpdate = await response.json();
-        console.log("Progress update created:", newProgressUpdate);
-        form.reset();
-        setOpen(false);
-        setProgressValue(0);
-        setSelectedPlanId("");
-        if (data.planId) {
-          const response = await fetch(`http://localhost:8080/api/progress-updates/plan/${data.planId}`);
-          if (response.ok) {
-            const updatedData = await response.json();
-            console.log("Refreshed progress updates after submission:", updatedData);
-            setProgressUpdates(updatedData);
-          } else {
-            console.error("Failed to refresh progress updates:", response.status, await response.text());
-          }
+      if (!response.ok) {
+        if (response.status === 401) {
+          alert("Your session has expired. Please try again or contact support.");
+          return;
         }
-        if (onProgressUpdate) {
-          onProgressUpdate();
-        }
-      } else {
-        console.error("Failed to create progress update:", response.status, await response.text());
-        alert("Failed to create progress update. Please try again.");
+        throw new Error("Failed to create progress update");
+      }
+
+      alert("Progress shared successfully!");
+      form.reset();
+      setOpen(false);
+      setSelectedPlanId("");
+      if (onProgressUpdate) {
+        onProgressUpdate();
       }
     } catch (error) {
       console.error("Error creating progress update:", error);
-      alert("Failed to create progress update. Please check if the backend server is running and try again.");
+      alert(`Error creating progress update: ${error.message}`);
     }
   };
 
@@ -170,7 +187,7 @@ const ProgressCard = ({ onProgressUpdate }) => {
                 <textarea
                   {...form.register("description")}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 h-32 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., Today I mastered the julienne cut! It took a lot of practice, but I can now cut vegetables into perfect matchsticks."
+                  placeholder="e.g., Today I mastered the julienne cut!"
                 />
                 {form.formState.errors.description && (
                   <p className="text-red-500 text-sm">
@@ -198,26 +215,6 @@ const ProgressCard = ({ onProgressUpdate }) => {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Progress: {progressValue}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={progressValue}
-                  disabled // Disable the slider
-                  className="w-full h-2 rounded-full custom-slider opacity-50 cursor-not-allowed"
-                />
-                {form.formState.errors.progressPercentage && (
-                  <p className="text-red-500 text-sm">
-                    {form.formState.errors.progressPercentage.message}
-                  </p>
-                )}
               </div>
 
               {progressUpdates.length > 0 && (
@@ -254,50 +251,6 @@ const ProgressCard = ({ onProgressUpdate }) => {
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        .custom-slider {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 100%;
-          height: 8px;
-          background: #e5e7eb; /* Tailwind's gray-200 */
-          border-radius: 9999px; /* Tailwind's rounded-full */
-          outline: none;
-        }
-
-        .custom-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          background: #3b82f6; /* Tailwind's blue-500 */
-          border-radius: 50%;
-          cursor: not-allowed; /* Reflect disabled state */
-        }
-
-        .custom-slider::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          background: #3b82f6; /* Tailwind's blue-500 */
-          border-radius: 50%;
-          cursor: not-allowed; /* Reflect disabled state */
-        }
-
-        .custom-slider::-webkit-slider-runnable-track {
-          width: 100%;
-          height: 8px;
-          background: #e5e7eb; /* Tailwind's gray-200 */
-          border-radius: 9999px; /* Tailwind's rounded-full */
-        }
-
-        .custom-slider::-moz-range-track {
-          width: 100%;
-          height: 8px;
-          background: #e5e7eb; /* Tailwind's gray-200 */
-          border-radius: 9999px; /* Tailwind's rounded-full */
-        }
-      `}</style>
     </div>
   );
 };

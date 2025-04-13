@@ -63,27 +63,26 @@ const LearningPlanPage = () => {
     },
   });
 
-  // Function to fetch user plans (will be reused for auto-refresh)
   const fetchUserPlans = async (token) => {
     try {
-      const userPlansResponse = await fetch("http://localhost:8080/api/learning-plans", {
+      const response = await fetch("http://localhost:8080/api/learning-plans", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      if (!userPlansResponse.ok) {
-        const errorText = await userPlansResponse.text();
-        if (userPlansResponse.status === 401) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 401) {
           setError("Session expired. Please log in again.");
           localStorage.removeItem("token");
           navigate("/login");
           return false;
         }
-        throw new Error(`Failed to fetch user plans: ${userPlansResponse.status} - ${errorText}`);
+        throw new Error(`Failed to fetch user plans: ${errorText}`);
       }
-      const userPlansData = await userPlansResponse.json();
-      setUserPlans(userPlansData);
+      const plans = await response.json();
+      setUserPlans(plans);
       return true;
     } catch (err) {
       console.error("Error fetching user plans:", err);
@@ -92,29 +91,26 @@ const LearningPlanPage = () => {
     }
   };
 
-  // Function to fetch community plans
   const fetchCommunityPlans = async (token) => {
     try {
-      console.log("Fetching community plans...");
-      const communityPlansResponse = await fetch("http://localhost:8080/api/learning-plans/public", {
+      const response = await fetch("http://localhost:8080/api/learning-plans/public", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      if (!communityPlansResponse.ok) {
-        const errorText = await communityPlansResponse.text();
-        if (communityPlansResponse.status === 401) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 401) {
           setError("Session expired. Please log in again.");
           localStorage.removeItem("token");
           navigate("/login");
           return false;
         }
-        throw new Error(`Failed to fetch community plans: ${communityPlansResponse.status} - ${errorText}`);
+        throw new Error(`Failed to fetch community plans: ${errorText}`);
       }
-      const communityPlansData = await communityPlansResponse.json();
-      console.log("Community plans response:", communityPlansData);
-      setCommunityPlans(communityPlansData);
+      const plans = await response.json();
+      setCommunityPlans(plans);
       return true;
     } catch (err) {
       console.error("Error fetching community plans:", err);
@@ -123,7 +119,6 @@ const LearningPlanPage = () => {
     }
   };
 
-  // Fetch learning plans on component mount
   useEffect(() => {
     const fetchPlans = async () => {
       setIsLoadingPlans(true);
@@ -136,12 +131,7 @@ const LearningPlanPage = () => {
           return;
         }
 
-        // Fetch user plans
-        await fetchUserPlans(token);
-
-        // Fetch community plans
-        await fetchCommunityPlans(token);
-
+        await Promise.all([fetchUserPlans(token), fetchCommunityPlans(token)]);
       } catch (err) {
         console.error("Error fetching plans:", err);
         setError(`Failed to load plans: ${err.message}`);
@@ -166,64 +156,66 @@ const LearningPlanPage = () => {
         return;
       }
 
+      console.log("Token being sent:", token.substring(0, 10) + "...");
+      console.log("Editing plan ID:", currentPlanId);
+      const payload = {
+        title: data.title,
+        description: data.description,
+        progress: isEditingPlan ? undefined : 0,
+        topics: data.topics,
+        startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
+        estimatedEndDate: data.estimatedEndDate ? new Date(data.estimatedEndDate).toISOString() : undefined,
+        isPublic: data.isPublic,
+      };
+      console.log("Sending payload:", payload);
+
       const response = await fetch(url, {
         method,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          title: data.title,
-          description: data.description,
-          progress: isEditingPlan ? undefined : 0,
-          topics: data.topics,
-          startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
-          estimatedEndDate: data.estimatedEndDate ? new Date(data.estimatedEndDate).toISOString() : undefined,
-          isPublic: data.isPublic,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        if (response.status === 401) {
-          setError("Session expired. Please log in again.");
-          localStorage.removeItem("token");
-          navigate("/login");
-          return;
+        console.error("API Error:", response.status, errorText);
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (response.status === 401 && errorJson.error.toLowerCase().includes("expired")) {
+            setError("Session expired. Please log in again.");
+            localStorage.removeItem("token");
+            navigate("/login");
+            return;
+          }
+          if (response.status === 401) {
+            setError("Authentication failed: " + errorJson.error);
+            return;
+          }
+          if (response.status === 403) {
+            setError("You are not authorized to edit this plan.");
+            return;
+          }
+          setError(`Failed to ${isEditingPlan ? "update" : "create"} learning plan: ${errorJson.error || errorText}`);
+        } catch (e) {
+          setError(`Failed to ${isEditingPlan ? "update" : "create"} learning plan: ${errorText}`);
         }
-        throw new Error(`Failed to ${isEditingPlan ? "update" : "create"} learning plan: ${errorText}`);
+        return;
       }
 
       const updatedPlan = await response.json();
-      if (isEditingPlan) {
-        setUserPlans(
-          userPlans.map((plan) =>
-            plan.id === currentPlanId ? updatedPlan : plan
-          )
-        );
-        if (updatedPlan.isPublic) {
-          setCommunityPlans(
-            communityPlans
-              .filter((plan) => plan.id !== currentPlanId)
-              .concat(updatedPlan)
-          );
-        } else {
-          setCommunityPlans(
-            communityPlans.filter((plan) => plan.id !== currentPlanId)
-          );
-        }
-      } else {
-        setUserPlans([...userPlans, updatedPlan]);
-        if (updatedPlan.isPublic) {
-          setCommunityPlans([...communityPlans, updatedPlan]);
-        }
-      }
+      console.log("Plan updated/created:", updatedPlan);
+
+      await Promise.all([fetchUserPlans(token), fetchCommunityPlans(token)]);
+
       setIsCreatingPlan(false);
       setIsEditingPlan(false);
       setCurrentPlanId(null);
       form.reset();
       setSelectedStartDate("");
       setSelectedEndDate("");
+      setError(null);
     } catch (err) {
       console.error("Error submitting learning plan:", err);
       setError(`Failed to ${isEditingPlan ? "update" : "create"} your learning plan: ${err.message}`);
@@ -258,7 +250,7 @@ const LearningPlanPage = () => {
         return;
       }
 
-      const updatePlanResponse = await fetch(`http://localhost:8080/api/learning-plans/${planId}`, {
+      const response = await fetch(`http://localhost:8080/api/learning-plans/${planId}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -270,24 +262,26 @@ const LearningPlanPage = () => {
         }),
       });
 
-      if (!updatePlanResponse.ok) {
-        const errorText = await updatePlanResponse.text();
-        if (updatePlanResponse.status === 401) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 401) {
           setError("Session expired. Please log in again.");
           localStorage.removeItem("token");
           navigate("/login");
           return;
         }
+        if (response.status === 403) {
+          setError("You are not authorized to edit this plan.");
+          return;
+        }
         throw new Error(`Failed to update topic completion: ${errorText}`);
       }
-
-      const updatedPlan = await updatePlanResponse.json();
 
       const totalTopics = updatedTopics.length;
       const completedTopics = updatedTopics.filter((t) => t.completed).length;
       const progressPercentage = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
-      const progressUpdateResponse = await fetch("http://localhost:8080/api/progress-updates", {
+      const progressResponse = await fetch("http://localhost:8080/api/progress-updates", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -299,9 +293,9 @@ const LearningPlanPage = () => {
         }),
       });
 
-      if (!progressUpdateResponse.ok) {
-        const errorText = await progressUpdateResponse.text();
-        if (progressUpdateResponse.status === 401) {
+      if (!progressResponse.ok) {
+        const errorText = await progressResponse.text();
+        if (progressResponse.status === 401) {
           setError("Session expired. Please log in again.");
           localStorage.removeItem("token");
           navigate("/login");
@@ -310,15 +304,7 @@ const LearningPlanPage = () => {
         throw new Error(`Failed to create progress update: ${errorText}`);
       }
 
-      const updatedProgressPlan = { ...updatedPlan, progress: progressPercentage };
-      setUserPlans(
-        userPlans.map((p) => (p.id === planId ? updatedProgressPlan : p))
-      );
-      if (updatedProgressPlan.isPublic) {
-        setCommunityPlans(
-          communityPlans.map((p) => (p.id === planId ? updatedProgressPlan : p))
-        );
-      }
+      await Promise.all([fetchUserPlans(token), fetchCommunityPlans(token)]);
     } catch (err) {
       console.error("Error toggling topic completion:", err);
       setError(`Failed to update topic completion: ${err.message}`);
@@ -343,15 +329,15 @@ const LearningPlanPage = () => {
         body: JSON.stringify({
           title: plan.title,
           description: plan.description,
-          progress: 0, // Reset progress for the copied plan
+          progress: 0,
           topics: plan.topics.map((topic) => ({
             title: topic.title,
             description: topic.description,
-            completed: false, // Reset completion status
+            completed: false,
           })),
           startDate: plan.startDate,
           estimatedEndDate: plan.estimatedEndDate,
-          isPublic: false, // Copied plan is private by default
+          isPublic: false,
         }),
       });
 
@@ -366,10 +352,8 @@ const LearningPlanPage = () => {
         throw new Error(`Failed to copy plan: ${errorText}`);
       }
 
-      // Re-fetch user plans to auto-refresh the "My Plans" tab
       const success = await fetchUserPlans(token);
       if (success) {
-        // Switch to "My Plans" tab
         setActiveTab("my-plans");
         setError("Plan copied successfully!");
       }
@@ -405,11 +389,16 @@ const LearningPlanPage = () => {
           navigate("/login");
           return;
         }
+        if (response.status === 403) {
+          setError("You are not authorized to delete this plan.");
+          return;
+        }
         throw new Error(`Failed to delete plan: ${errorText}`);
       }
 
       setUserPlans(userPlans.filter((plan) => plan.id !== planId));
       setCommunityPlans(communityPlans.filter((plan) => plan.id !== planId));
+      setError("Plan deleted successfully!");
     } catch (err) {
       console.error("Error deleting plan:", err);
       setError(`Failed to delete the plan: ${err.message}`);
@@ -421,8 +410,11 @@ const LearningPlanPage = () => {
     setIsEditingPlan(true);
     setCurrentPlanId(plan.id);
 
-    const startDateStr = plan.startDate ? new Date(plan.startDate).toISOString().split("T")[0] : "";
-    const endDateStr = plan.estimatedEndDate ? new Date(plan.estimatedEndDate).toISOString().split("T")[0] : "";
+    const startDate = plan.startDate ? new Date(plan.startDate) : null;
+    const endDate = plan.estimatedEndDate ? new Date(plan.estimatedEndDate) : null;
+
+    const startDateStr = startDate && isValid(startDate) ? startDate.toISOString().split("T")[0] : "";
+    const endDateStr = endDate && isValid(endDate) ? endDate.toISOString().split("T")[0] : "";
 
     form.reset({
       title: plan.title || "",
