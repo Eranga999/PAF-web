@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,16 +31,18 @@ public class PostController {
     @Autowired
     private ImageRepository imageRepository;
 
+    @SuppressWarnings("unused")
     private final String jwtSecret;
 
     public PostController(PostService postService, ImageRepository imageRepository, @Value("${jwt.secret}") String jwtSecret) {
         this.postService = postService;
         this.imageRepository = imageRepository;
         this.jwtSecret = jwtSecret;
-        System.out.println("PostController - JWT Secret: " + (jwtSecret != null ? jwtSecret : "null"));
-        if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
-            throw new IllegalStateException("JWT secret is not configured in application.properties");
-        }
+    }
+
+    @PostConstruct
+    public void logJwtSecretLoaded() {
+        System.out.println("PostController - JWT Secret loaded successfully.");
     }
 
     @PostMapping("/posts")
@@ -154,7 +157,7 @@ public class PostController {
 
             Image image = imageOptional.get();
             System.out.println("Found image - FileName: " + image.getFileName() + ", ContentType: " + image.getContentType() + ", Data length: " + (image.getData() != null ? image.getData().length() : 0));
-            
+
             ByteArrayResource resource = new ByteArrayResource(image.getData().getData());
             System.out.println("Returning image data with length: " + resource.contentLength());
 

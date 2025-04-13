@@ -3,6 +3,8 @@ package com.skillshare.cooking.config;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +21,8 @@ import java.util.Collections;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -40,10 +44,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                             email, null, Collections.emptyList());
                     SecurityContextHolder.getContext().setAuthentication(auth);
-                    System.out.println("JWT validated successfully for user: " + email);
+                    logger.debug("JWT validated successfully for user: {}", email);
                 }
             } catch (Exception e) {
-                System.err.println("JWT validation failed: " + e.getMessage());
+                logger.error("JWT validation failed: {}", e.getMessage());
                 SecurityContextHolder.clearContext();
             }
         }
