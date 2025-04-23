@@ -14,38 +14,51 @@ public class LearningPlanService {
     @Autowired
     private LearningPlanRepository learningPlanRepository;
 
-    public LearningPlan createLearningPlan(LearningPlan learningPlan) {
+    public LearningPlan createLearningPlan(LearningPlan learningPlan, String userEmail) {
+        learningPlan.setUserEmail(userEmail);
+        learningPlan.setPublic(learningPlan.isPublic());
         return learningPlanRepository.save(learningPlan);
     }
 
-    public List<LearningPlan> getAllLearningPlans() {
-        return learningPlanRepository.findAll();
+    public List<LearningPlan> getUserLearningPlans(String userEmail) {
+        return learningPlanRepository.findByUserEmail(userEmail);
+    }
+
+    public List<LearningPlan> getPublicLearningPlans() {
+        return learningPlanRepository.findByIsPublicTrue();
     }
 
     public Optional<LearningPlan> getLearningPlanById(String id) {
         return learningPlanRepository.findById(id);
     }
 
-    public Optional<LearningPlan> getLearningPlanByTitle(String title) {
-        return learningPlanRepository.findByTitle(title);
+    public Optional<LearningPlan> updateLearningPlan(String id, LearningPlan learningPlan, String userEmail) {
+        Optional<LearningPlan> existingPlan = learningPlanRepository.findById(id);
+        if (existingPlan.isPresent() && existingPlan.get().getUserEmail().equals(userEmail)) {
+            learningPlan.setId(id);
+            learningPlan.setUserEmail(userEmail);
+            learningPlan.setPublic(learningPlan.isPublic());
+            return Optional.of(learningPlanRepository.save(learningPlan));
+        }
+        return Optional.empty();
     }
 
-    public LearningPlan updateLearningPlan(String id, LearningPlan learningPlan) {
-        learningPlan.setId(id);
-        return learningPlanRepository.save(learningPlan);
+    public boolean deleteLearningPlan(String id, String userEmail) {
+        Optional<LearningPlan> existingPlan = learningPlanRepository.findById(id);
+        if (existingPlan.isPresent() && existingPlan.get().getUserEmail().equals(userEmail)) {
+            learningPlanRepository.deleteById(id);
+            return true;
+        }
+        return false;
     }
 
-    public void deleteLearningPlan(String id) {
-        learningPlanRepository.deleteById(id);
-    }
-
-    public LearningPlan updateProgress(String id, int progress) {
+    public Optional<LearningPlan> updateProgress(String id, int progress, String userEmail) {
         Optional<LearningPlan> optionalPlan = learningPlanRepository.findById(id);
-        if (optionalPlan.isPresent()) {
+        if (optionalPlan.isPresent() && optionalPlan.get().getUserEmail().equals(userEmail)) {
             LearningPlan plan = optionalPlan.get();
             plan.setProgress(progress);
-            return learningPlanRepository.save(plan);
+            return Optional.of(learningPlanRepository.save(plan));
         }
-        throw new RuntimeException("Learning Plan not found with id: " + id);
+        return Optional.empty();
     }
 }
