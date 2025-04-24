@@ -1,24 +1,31 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
-//learning planpages
+// Learning plan pages
 import CulinaryJourneyPage from "./pages/learningplan/CulinaryJourneyPage";
-import CommunityExplorePage from  "./pages/learningplan/CommunityExplorePage";
-import LearningPlanPage from    "./pages/learningplan/LearningPlanPage";
-
-//todo
+import CommunityExplorePage from "./pages/learningplan/CommunityExplorePage";
+import LearningPlanPage from "./pages/learningplan/LearningPlanPage";
+import RecipesPage from "./pages/Recipes/RecipesPage";
+import Login from "./pages/login";
+import ProfilePage from "./pages/ProfilePage";
 import Homepage from "./pages/homepage";
-function App() {
+import ExplorePage from "./pages/ExplorePage";
+import UserProfilePage from "./pages/UserProfilePage";
 
+function App() {
   return (
-    <Router>
     <Routes>
-    <Route path="/" element={<Homepage />} />
-    <Route path="/culinaryjourney" element={<CulinaryJourneyPage />} />
+      <Route path="/" element={<Homepage />} />
+      <Route path="/culinaryjourney" element={<CulinaryJourneyPage />} />
       <Route path="/community" element={<CommunityExplorePage />} />
       <Route path="/learningplan" element={<LearningPlanPage />} />
+      <Route path="/recipes" element={<RecipesPage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/explore" element={<ExplorePage />} />
+      <Route path="/users/:userId" element={<UserProfilePage />} />
     </Routes>
-  </Router>
-  )
+  );
 }
 
-export default App
+export default App;

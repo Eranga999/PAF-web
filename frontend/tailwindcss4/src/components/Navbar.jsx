@@ -1,25 +1,51 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../components/hooks/use-auth";
-import { 
-  ChefHat, 
-  Menu, 
-  Plus, 
-  LogOut, 
-  User, 
-  BookOpen 
-} from "lucide-react";
+import { ChefHat, Menu, LogOut, User, BookOpen, Search, Users } from "lucide-react";
+import { classNames } from "../utils/classNames";
 
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logoutMutation } = useAuth();
+  const [user, setUser] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const response = await fetch("http://localhost:8080/api/profile", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setUser(data);
+            console.log("Navbar - Fetched user:", data);
+            console.log("Navbar - Profile picture URL:", data.profilePictureUrl);
+          } else {
+            console.error("Navbar - Fetch user failed:", response.status);
+            localStorage.removeItem("token");
+            navigate("/login", { replace: true });
+          }
+        } catch (error) {
+          console.error("Navbar - Fetch user error:", error);
+          localStorage.removeItem("token");
+          navigate("/login", { replace: true });
+        }
+      }
+    };
+    fetchUser();
+  }, [navigate]);
+
   const handleLogout = () => {
-    logoutMutation.mutate();
-    navigate("/");
+    localStorage.removeItem("token");
+    setUser(null);
+    navigate("/", { replace: true });
+    console.log("Navbar - User logged out");
   };
 
   const isActive = (path) => {
@@ -32,8 +58,8 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
-              <Link 
-                to="/" 
+              <Link
+                to="/"
                 className="text-blue-400 font-bold text-2xl flex items-center"
               >
                 <ChefHat className="mr-2 h-6 w-6" />
@@ -41,84 +67,115 @@ export default function Navbar() {
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link 
-                to="/" 
-                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive("/") ? "border-blue-400 text-white" : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"}`}
+              <Link
+                to="/"
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  isActive("/")
+                    ? "border-blue-400 text-white"
+                    : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"
+                }`}
               >
                 Home
               </Link>
-              <Link 
-                to="/community" 
-                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive("/community") ? "border-blue-400 text-white" : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"}`}
+              <Link
+                to="/explore"
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  isActive("/explore")
+                    ? "border-blue-400 text-white"
+                    : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"
+                }`}
               >
+                <Users className="mr-1 h-4 w-4" />
                 Explore
               </Link>
-              <Link 
-                to="/learningplan" 
-                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive("/learningplan") ? "border-blue-400 text-white" : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"}`}
+              <Link
+                to="/learningplan"
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  isActive("/learningplan")
+                    ? "border-blue-400 text-white"
+                    : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"
+                }`}
               >
                 Learning Plans
               </Link>
-              <Link 
-                to="/culinaryjourney" 
-                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive("/culinaryjourney") ? "border-blue-400 text-white" : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"}`}
+              <Link
+                to="/culinaryjourney"
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  isActive("/culinaryjourney")
+                    ? "border-blue-400 text-white"
+                    : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"
+                }`}
               >
-                learning plan overview
+                Learning Plan Overview
               </Link>
-              <Link 
-                to={`/profile/${user?.id}`} 
-                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.startsWith("/profile") ? "border-blue-400 text-white" : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"}`}
+              <Link
+                to="/profile"
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  isActive("/profile")
+                    ? "border-blue-400 text-white"
+                    : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"
+                }`}
               >
                 My Profile
               </Link>
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <Link 
-              to="/" 
-              className="ml-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
-            >
-              <Plus className="mr-2 h-4 w-4" /> New Post
-            </Link>
-            <div className="ml-3 relative">
-              <button 
-                className="h-8 w-8 rounded-full bg-gray-600"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-              />
-              <div className={`absolute right-0 mt-2 w-48 bg-gray-700 shadow-lg rounded-md ${dropdownOpen ? "block" : "hidden"}`}>
-                <div className="p-2">
-                  <div className="flex flex-col p-2">
-                    <span className="text-white">{user?.name || user?.username}</span>
-                    {user?.name && <span className="text-xs text-gray-400">@{user.username}</span>}
+            {user && (
+              <div className="ml-3 relative">
+                <button
+                  className="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center overflow-hidden"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                >
+                  <img
+                    src={user.profilePictureUrl}
+                    alt="Profile"
+                    className="h-8 w-8 object-cover"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/150";
+                      console.log("Navbar - Profile picture load failed");
+                    }}
+                  />
+                </button>
+                <div
+                  className={`absolute right-0 mt-2 w-48 bg-gray-700 shadow-lg rounded-md ${
+                    dropdownOpen ? "block" : "hidden"
+                  }`}
+                >
+                  <div className="p-2">
+                    <div className="flex flex-col p-2">
+                      <span className="text-white">{user.name}</span>
+                      <span className="text-xs text-gray-400">{user.email}</span>
+                    </div>
+                    <hr className="my-1 border-gray-600" />
+                    <Link
+                      to="/profile"
+                      className="w-full text-left p-2 hover:bg-gray-600 flex items-center text-gray-300 hover:text-white"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <User className="mr-2 h-4 w-4" /> Profile
+                    </Link>
+                    <Link
+                      to="/learningplan"
+                      className="w-full text-left p-2 hover:bg-gray-600 flex items-center text-gray-300 hover:text-white"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <BookOpen className="mr-2 h-4 w-4" /> Learning Plans
+                    </Link>
+                    <hr className="my-1 border-gray-600" />
+                    <button
+                      className="w-full text-left p-2 hover:bg-gray-600 flex items-center text-gray-300 hover:text-white"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" /> Log out
+                    </button>
                   </div>
-                  <hr className="my-1 border-gray-600" />
-                  <Link 
-                    to={`/profile/${user?.id}`} 
-                    className="w-full text-left p-2 hover:bg-gray-600 flex items-center text-gray-300 hover:text-white"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    <User className="mr-2 h-4 w-4" /> Profile
-                  </Link>
-                  <Link 
-                    to="/learningplan" 
-                    className="w-full text-left p-2 hover:bg-gray-600 flex items-center text-gray-300 hover:text-white"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    <BookOpen className="mr-2 h-4 w-4" /> Learning Plans
-                  </Link>
-                  <hr className="my-1 border-gray-600" />
-                  <button 
-                    className="w-full text-left p-2 hover:bg-gray-600 flex items-center text-gray-300 hover:text-white"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" /> Log out
-                  </button>
                 </div>
               </div>
-            </div>
+            )}
           </div>
           <div className="sm:hidden flex items-center">
-            <button 
+            <button
               className="p-2"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -130,32 +187,58 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="sm:hidden border-t border-gray-600">
           <div className="pt-2 pb-4 space-y-1">
-            <Link 
-              to="/" 
-              className={`block pl-3 pr-4 py-2 ${isActive("/") ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium" : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"}`}
+            <Link
+              to="/"
+              className={`block pl-3 pr-4 py-2 ${
+                isActive("/")
+                  ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium"
+                  : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"
+              }`}
             >
               Home
             </Link>
-            <Link 
-              to="/community" 
-              className={`block pl-3 pr-4 py-2 ${isActive("/community") ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium" : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"}`}
+            <Link
+              to="/explore"
+              className={`block pl-3 pr-4 py-2 ${
+                isActive("/explore")
+                  ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium"
+                  : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"
+              }`}
             >
               Explore
             </Link>
-            <Link 
-              to="/learningplan" 
-              className={`block pl-3 pr-4 py-2 ${isActive("/learningplan") ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium" : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"}`}
+            <Link
+              to="/learningplan"
+              className={`block pl-3 pr-4 py-2 ${
+                isActive("/learningplan")
+                  ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium"
+                  : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"
+              }`}
             >
               Learning Plans
             </Link>
-            <Link 
-              to={`/profile/${user?.id}`}
-              className={`block pl-3 pr-4 py-2 ${location.pathname.startsWith("/profile") ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium" : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"}`}
+            <Link
+              to="/culinaryjourney"
+              className={`block pl-3 pr-4 py-2 ${
+                isActive("/culinaryjourney")
+                  ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium"
+                  : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"
+              }`}
+            >
+              Learning Plan Overview
+            </Link>
+            <Link
+              to="/profile"
+              className={`block pl-3 pr-4 py-2 ${
+                isActive("/profile")
+                  ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium"
+                  : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"
+              }`}
             >
               My Profile
             </Link>
             <div className="border-t border-gray-600 pt-2 mt-2">
-              <button 
+              <button
                 onClick={handleLogout}
                 className="block w-full text-left pl-3 pr-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white"
               >
