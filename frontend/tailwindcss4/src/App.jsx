@@ -9,6 +9,8 @@ import RecipesPage from "./pages/Recipes/RecipesPage";
 import Login from "./pages/login";
 import ProfilePage from "./pages/ProfilePage";
 import Homepage from "./pages/homepage";
+import ExplorePage from "./pages/ExplorePage";
+import UserProfilePage from "./pages/UserProfilePage";
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
       <Route path="/recipes" element={<RecipesPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/explore" element={<ExplorePage />} />
+      <Route path="/users/:userId" element={<UserProfilePage />} />
     </Routes>
   );
 }

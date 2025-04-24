@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -30,8 +31,25 @@ public class User {
     private List<String> favoriteCuisines;
 
     private LocalDateTime createdAt;
+    
+    // List of user IDs who are following this user
+    private List<String> followers = new ArrayList<>();
+    
+    // List of user IDs that this user is following
+    private List<String> following = new ArrayList<>();
 
     public User() {
         this.createdAt = LocalDateTime.now();
+        this.followers = new ArrayList<>();
+        this.following = new ArrayList<>();
+    }
+    
+    // Helper methods for follower/following counts
+    public int getFollowersCount() {
+        return followers != null ? followers.size() : 0;
+    }
+    
+    public int getFollowingCount() {
+        return following != null ? following.size() : 0;
     }
 }

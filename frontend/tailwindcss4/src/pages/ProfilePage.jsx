@@ -125,7 +125,7 @@ const ProfilePage = () => {
   useEffect(() => {
     fetchProfile();
     fetchPosts();
-  }, [navigate]);
+  }, []);
 
   // Update profile
   const onProfileSubmit = async (data) => {
@@ -150,6 +150,56 @@ const ProfilePage = () => {
       }
     } catch (error) {
       console.error('ProfilePage.jsx - Update error:', error);
+    }
+  };
+
+  // Upload profile picture
+  const handleProfilePictureUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Show loading state
+      setIsLoading(true);
+
+      const response = await fetch('http://localhost:8080/api/profile/picture', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const profilePictureUrl = await response.text();
+        console.log('ProfilePage.jsx - Uploaded profile picture URL:', profilePictureUrl);
+        
+        // Update the form value
+        profileForm.setValue('profilePictureUrl', profilePictureUrl);
+        
+        // Update the user state to show the new image immediately
+        setUser(prevUser => ({
+          ...prevUser,
+          profilePictureUrl: profilePictureUrl
+        }));
+      } else {
+        console.error('Profile picture upload failed:', await response.text());
+        alert('Failed to upload profile picture. Please try again.');
+      }
+    } catch (error) {
+      console.error('ProfilePage.jsx - Profile picture upload error:', error);
+      alert('An error occurred while uploading your profile picture.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -610,11 +660,11 @@ const ProfilePage = () => {
                   <p className="text-sm text-gray-500">Posts</p>
                 </div>
                 <div className="text-center">
-                  <p className="font-semibold">1.5M</p>
+                  <p className="font-semibold">{user.followersCount || 0}</p>
                   <p className="text-sm text-gray-500">Followers</p>
                 </div>
                 <div className="text-center">
-                  <p className="font-semibold">71</p>
+                  <p className="font-semibold">{user.followingCount || 0}</p>
                   <p className="text-sm text-gray-500">Following</p>
                 </div>
               </div>
@@ -668,7 +718,34 @@ const ProfilePage = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">Profile Picture URL</label>
+                    <label className="block text-sm font-medium mb-1">Profile Picture</label>
+                    
+                    {/* Profile Picture Upload */}
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-600 mb-2">Upload an image:</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePictureUpload}
+                          className="w-full border rounded-md px-3 py-2"
+                          id="profile-picture-upload"
+                        />
+                        {isLoading && <Loader2 className="animate-spin h-5 w-5 text-blue-500" />}
+                      </div>
+                    </div>
+                    
+                    <div className="relative my-4">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="border-t border-gray-300 w-full"></div>
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-white px-2 text-sm text-gray-500">OR</span>
+                      </div>
+                    </div>
+                    
+                    {/* Profile Picture URL */}
+                    <p className="text-sm text-gray-600 mb-2">Enter an image URL:</p>
                     <input
                       {...profileForm.register('profilePictureUrl')}
                       className="w-full border rounded-md px-3 py-2"

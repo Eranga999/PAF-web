@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { ChefHat, Menu, LogOut, User, BookOpen } from "lucide-react";
+import { ChefHat, Menu, LogOut, User, BookOpen, Search, Users } from "lucide-react";
+import { classNames } from "../utils/classNames";
 
 export default function Navbar() {
   const location = useLocation();
@@ -77,13 +78,14 @@ export default function Navbar() {
                 Home
               </Link>
               <Link
-                to="/community"
+                to="/explore"
                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                  isActive("/community")
+                  isActive("/explore")
                     ? "border-blue-400 text-white"
                     : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"
                 }`}
               >
+                <Users className="mr-1 h-4 w-4" />
                 Explore
               </Link>
               <Link
@@ -196,9 +198,9 @@ export default function Navbar() {
               Home
             </Link>
             <Link
-              to="/community"
+              to="/explore"
               className={`block pl-3 pr-4 py-2 ${
-                isActive("/community")
+                isActive("/explore")
                   ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium"
                   : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"
               }`}
