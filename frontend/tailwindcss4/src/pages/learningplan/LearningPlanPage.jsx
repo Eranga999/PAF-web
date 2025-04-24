@@ -15,8 +15,8 @@ import {
   Copy,
   Info,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
+// Import Navbar and Footer using relative paths
 import Navbar from "../../components/Navbar.jsx";
 import Footer from "../../components/Footer.jsx";
 
@@ -28,14 +28,12 @@ const learningPlanFormSchema = z.object({
     .array(
       z.object({
         title: z.string().min(1, "Topic or skill name is required"),
-        description: z.string().optional(),
         completed: z.boolean().default(false),
       })
     )
     .min(1, "Add at least one topic or skill"),
   startDate: z.string().optional(),
   estimatedEndDate: z.string().optional(),
-  isPublic: z.boolean().default(false),
 });
 
 const LearningPlanPage = () => {
@@ -46,101 +44,44 @@ const LearningPlanPage = () => {
   const [selectedStartDate, setSelectedStartDate] = useState("");
   const [selectedEndDate, setSelectedEndDate] = useState("");
   const [userPlans, setUserPlans] = useState([]);
-  const [communityPlans, setCommunityPlans] = useState([]);
+  const [allPlans, setAllPlans] = useState([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
   const form = useForm({
     resolver: zodResolver(learningPlanFormSchema),
     defaultValues: {
       title: "",
       description: "",
-      topics: [{ title: "", description: "", completed: false }],
+      topics: [{ title: "", completed: false }],
       startDate: "",
       estimatedEndDate: "",
-      isPublic: false,
     },
   });
 
-  const fetchUserPlans = async (token) => {
-    try {
-      const response = await fetch("http://localhost:8080/api/learning-plans", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (response.status === 401) {
-          setError("Session expired. Please log in again.");
-          localStorage.removeItem("token");
-          navigate("/login");
-          return false;
-        }
-        throw new Error(`Failed to fetch user plans: ${errorText}`);
-      }
-      const plans = await response.json();
-      setUserPlans(plans);
-      return true;
-    } catch (err) {
-      console.error("Error fetching user plans:", err);
-      setError(`Failed to load user plans: ${err.message}`);
-      return false;
-    }
-  };
-
-  const fetchCommunityPlans = async (token) => {
-    try {
-      const response = await fetch("http://localhost:8080/api/learning-plans/public", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (response.status === 401) {
-          setError("Session expired. Please log in again.");
-          localStorage.removeItem("token");
-          navigate("/login");
-          return false;
-        }
-        throw new Error(`Failed to fetch community plans: ${errorText}`);
-      }
-      const plans = await response.json();
-      setCommunityPlans(plans);
-      return true;
-    } catch (err) {
-      console.error("Error fetching community plans:", err);
-      setError(`Failed to load community plans: ${err.message}`);
-      return false;
-    }
-  };
-
+  // Fetch learning plans on component mount
   useEffect(() => {
     const fetchPlans = async () => {
       setIsLoadingPlans(true);
       setError(null);
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setError("Please log in to view your learning plans.");
-          navigate("/login");
-          return;
+        const response = await fetch("http://localhost:8080/api/learning-plans");
+        if (response.ok) {
+          const plans = await response.json();
+          setUserPlans(plans);
+          setAllPlans(plans);
+        } else {
+          throw new Error("Failed to fetch learning plans");
         }
-
-        await Promise.all([fetchUserPlans(token), fetchCommunityPlans(token)]);
       } catch (err) {
-        console.error("Error fetching plans:", err);
-        setError(`Failed to load plans: ${err.message}`);
+        console.error("Error fetching learning plans:", err);
+        setError("Failed to load your learning plans. Please try again later.");
       } finally {
         setIsLoadingPlans(false);
       }
     };
     fetchPlans();
-  }, [navigate]);
+  }, []);
 
   const onSubmit = async (data) => {
     const method = isEditingPlan ? "PUT" : "POST";
@@ -149,76 +90,55 @@ const LearningPlanPage = () => {
       : "http://localhost:8080/api/learning-plans";
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Please log in to create or update plans.");
-        navigate("/login");
-        return;
-      }
-
-      console.log("Token being sent:", token.substring(0, 10) + "...");
-      console.log("Editing plan ID:", currentPlanId);
-      const payload = {
-        title: data.title,
-        description: data.description,
-        progress: isEditingPlan ? undefined : 0,
-        topics: data.topics,
-        startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
-        estimatedEndDate: data.estimatedEndDate ? new Date(data.estimatedEndDate).toISOString() : undefined,
-        isPublic: data.isPublic,
-      };
-      console.log("Sending payload:", payload);
-
       const response = await fetch(url, {
         method,
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          title: data.title,
+          description: data.description,
+          progress: isEditingPlan ? undefined : 0,
+          topics: data.topics,
+          startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
+          estimatedEndDate: data.estimatedEndDate ? new Date(data.estimatedEndDate).toISOString() : undefined,
+        }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API Error:", response.status, errorText);
-        try {
-          const errorJson = JSON.parse(errorText);
-          if (response.status === 401 && errorJson.error.toLowerCase().includes("expired")) {
-            setError("Session expired. Please log in again.");
-            localStorage.removeItem("token");
-            navigate("/login");
-            return;
-          }
-          if (response.status === 401) {
-            setError("Authentication failed: " + errorJson.error);
-            return;
-          }
-          if (response.status === 403) {
-            setError("You are not authorized to edit this plan.");
-            return;
-          }
-          setError(`Failed to ${isEditingPlan ? "update" : "create"} learning plan: ${errorJson.error || errorText}`);
-        } catch (e) {
-          setError(`Failed to ${isEditingPlan ? "update" : "create"} learning plan: ${errorText}`);
+      if (response.ok) {
+        const updatedPlan = await response.json();
+        if (isEditingPlan) {
+          setUserPlans(
+            userPlans.map((plan) =>
+              plan.id === currentPlanId ? updatedPlan : plan
+            )
+          );
+          setAllPlans(
+            allPlans.map((plan) =>
+              plan.id === currentPlanId ? updatedPlan : plan
+            )
+          );
+        } else {
+          setUserPlans([...userPlans, updatedPlan]);
+          setAllPlans([...allPlans, updatedPlan]);
         }
-        return;
+        setIsCreatingPlan(false);
+        setIsEditingPlan(false);
+        setCurrentPlanId(null);
+        form.reset();
+        setSelectedStartDate("");
+        setSelectedEndDate("");
+      } else {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to ${isEditingPlan ? "update" : "create"} learning plan: ${errorText}`
+        );
       }
-
-      const updatedPlan = await response.json();
-      console.log("Plan updated/created:", updatedPlan);
-
-      await Promise.all([fetchUserPlans(token), fetchCommunityPlans(token)]);
-
-      setIsCreatingPlan(false);
-      setIsEditingPlan(false);
-      setCurrentPlanId(null);
-      form.reset();
-      setSelectedStartDate("");
-      setSelectedEndDate("");
-      setError(null);
     } catch (err) {
       console.error("Error submitting learning plan:", err);
-      setError(`Failed to ${isEditingPlan ? "update" : "create"} your learning plan: ${err.message}`);
+      alert(
+        `Failed to ${isEditingPlan ? "update" : "create"} your learning plan. Please try again.`
+      );
     }
   };
 
@@ -226,7 +146,7 @@ const LearningPlanPage = () => {
     const currentTopics = form.getValues("topics");
     form.setValue("topics", [
       ...currentTopics,
-      { title: "", description: "", completed: false },
+      { title: "", completed: false },
     ]);
   };
 
@@ -242,124 +162,76 @@ const LearningPlanPage = () => {
     const updatedTopics = [...plan.topics];
     updatedTopics[topicIndex].completed = !updatedTopics[topicIndex].completed;
 
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Please log in to update plans.");
-        navigate("/login");
-        return;
-      }
+    const totalTopics = updatedTopics.length;
+    const completedTopics = updatedTopics.filter((t) => t.completed).length;
+    const progress = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
+    try {
       const response = await fetch(`http://localhost:8080/api/learning-plans/${planId}`, {
         method: "PUT",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           ...plan,
           topics: updatedTopics,
+          progress,
         }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (response.status === 401) {
-          setError("Session expired. Please log in again.");
-          localStorage.removeItem("token");
-          navigate("/login");
-          return;
-        }
-        if (response.status === 403) {
-          setError("You are not authorized to edit this plan.");
-          return;
-        }
-        throw new Error(`Failed to update topic completion: ${errorText}`);
+      if (response.ok) {
+        const updatedPlan = await response.json();
+        setUserPlans(
+          userPlans.map((p) => (p.id === planId ? updatedPlan : p))
+        );
+        setAllPlans(
+          allPlans.map((p) => (p.id === planId ? updatedPlan : p))
+        );
+      } else {
+        throw new Error("Failed to update topic completion");
       }
-
-      const totalTopics = updatedTopics.length;
-      const completedTopics = updatedTopics.filter((t) => t.completed).length;
-      const progressPercentage = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
-
-      const progressResponse = await fetch("http://localhost:8080/api/progress-updates", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          planId,
-          progressPercentage,
-        }),
-      });
-
-      if (!progressResponse.ok) {
-        const errorText = await progressResponse.text();
-        if (progressResponse.status === 401) {
-          setError("Session expired. Please log in again.");
-          localStorage.removeItem("token");
-          navigate("/login");
-          return;
-        }
-        throw new Error(`Failed to create progress update: ${errorText}`);
-      }
-
-      await Promise.all([fetchUserPlans(token), fetchCommunityPlans(token)]);
     } catch (err) {
       console.error("Error toggling topic completion:", err);
-      setError(`Failed to update topic completion: ${err.message}`);
+      alert("Failed to update topic completion. Please try again.");
     }
+  };
+
+  const calculateProgress = (plan) => {
+    if (!plan.topics || plan.topics.length === 0) return 0;
+    const total = plan.topics.length;
+    const completed = plan.topics.filter((topic) => topic.completed).length;
+    return Math.round((completed / total) * 100);
   };
 
   const copyPlan = async (plan) => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Please log in to copy plans.");
-        navigate("/login");
-        return;
-      }
-
       const response = await fetch("http://localhost:8080/api/learning-plans", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: plan.title,
-          description: plan.description,
+          ...plan,
+          id: undefined,
           progress: 0,
           topics: plan.topics.map((topic) => ({
-            title: topic.title,
-            description: topic.description,
+            ...topic,
             completed: false,
           })),
-          startDate: plan.startDate,
-          estimatedEndDate: plan.estimatedEndDate,
-          isPublic: false,
         }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (response.status === 401) {
-          setError("Session expired. Please log in again.");
-          localStorage.removeItem("token");
-          navigate("/login");
-          return;
-        }
-        throw new Error(`Failed to copy plan: ${errorText}`);
-      }
-
-      const success = await fetchUserPlans(token);
-      if (success) {
-        setActiveTab("my-plans");
-        setError("Plan copied successfully!");
+      if (response.ok) {
+        const newPlan = await response.json();
+        setUserPlans([...userPlans, newPlan]);
+        setAllPlans([...allPlans, newPlan]);
+        alert("Plan copied successfully!");
+      } else {
+        throw new Error("Failed to copy plan");
       }
     } catch (err) {
       console.error("Error copying plan:", err);
-      setError(`Failed to copy the plan: ${err.message}`);
+      alert("Failed to copy the plan. Please try again.");
     }
   };
 
@@ -367,41 +239,19 @@ const LearningPlanPage = () => {
     if (!window.confirm("Are you sure you want to delete this learning plan?")) return;
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Please log in to delete plans.");
-        navigate("/login");
-        return;
-      }
-
       const response = await fetch(`http://localhost:8080/api/learning-plans/${planId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (response.status === 401) {
-          setError("Session expired. Please log in again.");
-          localStorage.removeItem("token");
-          navigate("/login");
-          return;
-        }
-        if (response.status === 403) {
-          setError("You are not authorized to delete this plan.");
-          return;
-        }
-        throw new Error(`Failed to delete plan: ${errorText}`);
+      if (response.ok) {
+        setUserPlans(userPlans.filter((plan) => plan.id !== planId));
+        setAllPlans(allPlans.filter((plan) => plan.id !== planId));
+      } else {
+        throw new Error("Failed to delete plan");
       }
-
-      setUserPlans(userPlans.filter((plan) => plan.id !== planId));
-      setCommunityPlans(communityPlans.filter((plan) => plan.id !== planId));
-      setError("Plan deleted successfully!");
     } catch (err) {
       console.error("Error deleting plan:", err);
-      setError(`Failed to delete the plan: ${err.message}`);
+      alert("Failed to delete the plan. Please try again.");
     }
   };
 
@@ -410,19 +260,15 @@ const LearningPlanPage = () => {
     setIsEditingPlan(true);
     setCurrentPlanId(plan.id);
 
-    const startDate = plan.startDate ? new Date(plan.startDate) : null;
-    const endDate = plan.estimatedEndDate ? new Date(plan.estimatedEndDate) : null;
-
-    const startDateStr = startDate && isValid(startDate) ? startDate.toISOString().split("T")[0] : "";
-    const endDateStr = endDate && isValid(endDate) ? endDate.toISOString().split("T")[0] : "";
+    const startDateStr = plan.startDate ? new Date(plan.startDate).toISOString().split("T")[0] : "";
+    const endDateStr = plan.estimatedEndDate ? new Date(plan.estimatedEndDate).toISOString().split("T")[0] : "";
 
     form.reset({
       title: plan.title || "",
       description: plan.description || "",
-      topics: plan.topics && plan.topics.length > 0 ? plan.topics : [{ title: "", description: "", completed: false }],
+      topics: plan.topics && plan.topics.length > 0 ? plan.topics : [{ title: "", completed: false }],
       startDate: startDateStr,
       estimatedEndDate: endDateStr,
-      isPublic: plan.isPublic || false,
     });
 
     setSelectedStartDate(startDateStr);
@@ -460,6 +306,7 @@ const LearningPlanPage = () => {
             </button>
           </div>
 
+          {/* Tabs */}
           <div className="mb-10">
             <div className="flex border-b border-gray-200">
               <button
@@ -476,6 +323,7 @@ const LearningPlanPage = () => {
               </button>
             </div>
 
+            {/* My Plans Tab */}
             {activeTab === "my-plans" && (
               <div className="mt-10">
                 {isLoadingPlans ? (
@@ -502,12 +350,12 @@ const LearningPlanPage = () => {
                             <div>
                               <div className="flex justify-between items-center mb-2">
                                 <h4 className="text-sm font-medium text-gray-700">Progress</h4>
-                                <span className="text-sm font-medium text-blue-600">{plan.progress ?? 0}%</span>
+                                <span className="text-sm font-medium text-blue-600">{calculateProgress(plan)}%</span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2.5">
                                 <div
                                   className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
-                                  style={{ width: `${plan.progress ?? 0}%` }}
+                                  style={{ width: `${calculateProgress(plan)}%` }}
                                 ></div>
                               </div>
                             </div>
@@ -586,6 +434,7 @@ const LearningPlanPage = () => {
               </div>
             )}
 
+            {/* Explore Tab */}
             {activeTab === "explore" && (
               <div className="mt-10">
                 {isLoadingPlans ? (
@@ -596,9 +445,9 @@ const LearningPlanPage = () => {
                   <div className="bg-red-50 rounded-lg p-6 text-center shadow-md">
                     <p className="text-red-600 text-lg">{error}</p>
                   </div>
-                ) : communityPlans.length > 0 ? (
+                ) : allPlans.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {communityPlans.map((plan) => (
+                    {allPlans.map((plan) => (
                       <div
                         key={plan.id}
                         className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300 border border-gray-100"
@@ -608,7 +457,6 @@ const LearningPlanPage = () => {
                             <div>
                               <h3 className="text-xl font-semibold text-gray-900">{plan.title}</h3>
                               <p className="text-gray-600 text-sm mt-1">{plan.description}</p>
-                              <p className="text-gray-500 text-sm mt-1">Created by: {plan.userEmail}</p>
                             </div>
                             <div>
                               <h4 className="text-sm font-medium text-gray-700 mb-2">Topics to Learn</h4>
@@ -647,8 +495,8 @@ const LearningPlanPage = () => {
                   </div>
                 ) : (
                   <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                    <h3 className="text-2xl font-medium text-gray-700 mb-3">No Community Plans Available</h3>
-                    <p className="text-gray-500 text-lg">No plans have been shared yet. Create and share your own!</p>
+                    <h3 className="text-2xl font-medium text-gray-700 mb-3">No Community Plans Yet</h3>
+                    <p className="text-gray-500 text-lg">Be the first to create and share a learning plan!</p>
                   </div>
                 )}
               </div>
@@ -657,6 +505,7 @@ const LearningPlanPage = () => {
         </div>
       </div>
 
+      {/* Create/Edit Plan Modal */}
       {isCreatingPlan && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -716,48 +565,28 @@ const LearningPlanPage = () => {
                   </button>
                 </div>
                 {form.watch("topics").map((_, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1">
-                        <input
-                          {...form.register(`topics.${index}.title`)}
-                          className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
-                          placeholder={`Topic ${index + 1} (e.g., Pasta Making)`}
-                        />
-                        {form.formState.errors.topics?.[index]?.title && (
-                          <p className="text-red-500 text-xs mt-1">{form.formState.errors.topics[index].title.message}</p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeTopic(index)}
-                        className="mt-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                        disabled={form.watch("topics").length <= 1}
-                        aria-label={`Remove topic ${index + 1}`}
-                      >
-                        <XCircle className="h-5 w-5 text-gray-500" />
-                      </button>
-                    </div>
-                    <div>
-                      <textarea
-                        {...form.register(`topics.${index}.description`)}
+                  <div key={index} className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <input
+                        {...form.register(`topics.${index}.title`)}
                         className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
-                        placeholder="Optional topic description"
+                        placeholder={`Topic ${index + 1} (e.g., Pasta Making)`}
                       />
+                      {form.formState.errors.topics?.[index]?.title && (
+                        <p className="text-red-500 text-xs mt-1">{form.formState.errors.topics[index].title.message}</p>
+                      )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => removeTopic(index)}
+                      className="mt-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                      disabled={form.watch("topics").length <= 1}
+                      aria-label={`Remove topic ${index + 1}`}
+                    >
+                      <XCircle className="h-5 w-5 text-gray-500" />
+                    </button>
                   </div>
                 ))}
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                  <input
-                    type="checkbox"
-                    {...form.register("isPublic")}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  Share this plan with the community
-                </label>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
