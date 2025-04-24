@@ -12,7 +12,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
@@ -101,6 +104,93 @@ public class UserController {
         } catch (Exception e) {
             logger.error("Error uploading profile picture: {}", e.getMessage());
             return ResponseEntity.status(500).body("Failed to upload profile picture: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Get all users for exploration
+     */
+    @GetMapping("/users")
+    public ResponseEntity<List<User>> getAllUsers() {
+        try {
+            logger.info("Fetching all users for exploration");
+            List<User> users = userService.findAllUsers();
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            logger.error("Error fetching all users: {}", e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+    
+    /**
+     * Search users by name
+     */
+    @GetMapping("/users/search")
+    public ResponseEntity<List<User>> searchUsers(@RequestParam String query) {
+        try {
+            logger.info("Searching users with query: {}", query);
+            List<User> users = userService.searchUsersByName(query);
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            logger.error("Error searching users: {}", e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+    
+    /**
+     * Get a user's public profile
+     */
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<?> getUserProfile(@PathVariable String userId) {
+        try {
+            String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            logger.info("Fetching user profile for userId: {} by user: {}", userId, currentUserEmail);
+            
+            User user = userService.getUserProfile(userId, currentUserEmail);
+            boolean isFollowing = userService.isFollowing(currentUserEmail, userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("user", user);
+            response.put("isFollowing", isFollowing);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error fetching user profile: {}", e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+    
+    /**
+     * Follow a user
+     */
+    @PostMapping("/users/{userId}/follow")
+    public ResponseEntity<?> followUser(@PathVariable String userId) {
+        try {
+            String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            logger.info("User {} is following user {}", currentUserEmail, userId);
+            
+            User updatedUser = userService.followUser(currentUserEmail, userId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            logger.error("Error following user: {}", e.getMessage());
+            return ResponseEntity.status(500).body(e.getMessage());
+        }
+    }
+    
+    /**
+     * Unfollow a user
+     */
+    @PostMapping("/users/{userId}/unfollow")
+    public ResponseEntity<?> unfollowUser(@PathVariable String userId) {
+        try {
+            String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            logger.info("User {} is unfollowing user {}", currentUserEmail, userId);
+            
+            User updatedUser = userService.unfollowUser(currentUserEmail, userId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            logger.error("Error unfollowing user: {}", e.getMessage());
+            return ResponseEntity.status(500).body(e.getMessage());
         }
     }
 }
