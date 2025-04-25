@@ -1,5 +1,6 @@
 import { useState, useEffect, Component } from "react";
 import { Calendar, LineChart, GraduationCap, Award, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import LearningPlanCard from "../../components/learning/LearningPlanCard.jsx";
 import ProgressCard from "../../components/learning/ProgressCard.jsx";
 import Navbar from "../../components/Navbar.jsx";
@@ -21,33 +22,48 @@ class ErrorBoundary extends Component {
 }
 
 const CulinaryJourneyPage = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("plans");
   const [learningPlans, setLearningPlans] = useState([]);
   const [progressUpdates, setProgressUpdates] = useState([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
 
+  const handleAuthError = () => {
+    localStorage.removeItem("token");
+    navigate("/login", { 
+      state: { 
+        message: "Your session has expired. Please log in again.",
+        redirectTo: "/learning-journey"
+      } 
+    });
+  };
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      handleAuthError();
+      return null;
+    }
+    return {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoadingPlans(true);
       setIsLoadingProgress(true);
 
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Authentication required to view your culinary journey.");
-        return;
-      }
-
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      };
+      const headers = getAuthHeaders();
+      if (!headers) return;
 
       try {
         const plansResponse = await fetch("http://localhost:8080/api/learning-plans", { headers });
         if (!plansResponse.ok) {
           if (plansResponse.status === 401) {
-            alert("Your session has expired. Please try again or contact support.");
+            handleAuthError();
             return;
           }
           throw new Error("Failed to fetch learning plans");
@@ -58,10 +74,10 @@ const CulinaryJourneyPage = () => {
         const progressResponse = await fetch("http://localhost:8080/api/progress-updates/user", { headers });
         if (!progressResponse.ok) {
           if (progressResponse.status === 401) {
-            alert("Your session has expired. Please try again or contact support.");
+            handleAuthError();
             return;
           }
-          setProgressUpdates([]); // Handle empty response
+          setProgressUpdates([]);
         } else {
           const progressData = await progressResponse.json();
           setProgressUpdates(progressData);
@@ -76,19 +92,11 @@ const CulinaryJourneyPage = () => {
     };
 
     fetchData();
-  }, []);
+  }, [navigate]);
 
   const handleProgressUpdate = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Authentication required to refresh your data.");
-      return;
-    }
-
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
+    const headers = getAuthHeaders();
+    if (!headers) return;
 
     try {
       const plansResponse = await fetch("http://localhost:8080/api/learning-plans", { headers });
@@ -97,7 +105,7 @@ const CulinaryJourneyPage = () => {
         setLearningPlans(plansData);
       } else {
         if (plansResponse.status === 401) {
-          alert("Your session has expired. Please try again or contact support.");
+          handleAuthError();
           return;
         }
         throw new Error("Failed to fetch learning plans");
@@ -109,7 +117,7 @@ const CulinaryJourneyPage = () => {
         setProgressUpdates(progressData);
       } else {
         if (progressResponse.status === 401) {
-          alert("Your session has expired. Please try again or contact support.");
+          handleAuthError();
           return;
         }
         setProgressUpdates([]);
@@ -122,18 +130,13 @@ const CulinaryJourneyPage = () => {
 
   const handleDeleteProgressUpdate = async (progressId) => {
     if (window.confirm("Are you sure you want to delete this progress update?")) {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Authentication required to delete progress updates.");
-        return;
-      }
+      const headers = getAuthHeaders();
+      if (!headers) return;
 
       try {
         const response = await fetch(`http://localhost:8080/api/progress-updates/${progressId}`, {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
         });
         if (response.ok) {
           setProgressUpdates(progressUpdates.filter((progress) => progress.id !== progressId));
@@ -141,7 +144,7 @@ const CulinaryJourneyPage = () => {
           await handleProgressUpdate();
         } else {
           if (response.status === 401) {
-            alert("Your session has expired. Please try again or contact support.");
+            handleAuthError();
             return;
           }
           throw new Error("Failed to delete progress update");
@@ -166,7 +169,7 @@ const CulinaryJourneyPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
               <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
-                <div className="h-12 W-12 rounded-full bg-blue-100 flex items-center justify-center mr-4">
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mr-4">
                   <Calendar className="h-6 w-6 text-blue-500" />
                 </div>
                 <div>
@@ -208,14 +211,20 @@ const CulinaryJourneyPage = () => {
             <div className="space-y-6">
               <div className="flex border-b">
                 <button
+                  id="plans-tab"
                   className={`py-3 px-6 text-gray-500 ${activeTab === "plans" ? "border-b-2 border-blue-500 text-blue-500" : "hover:text-gray-700 hover:border-gray-300"}`}
                   onClick={() => setActiveTab("plans")}
+                  aria-selected={activeTab === "plans"}
+                  role="tab"
                 >
                   Learning Plans
                 </button>
                 <button
+                  id="progress-tab"
                   className={`py-3 px-6 text-gray-500 ${activeTab === "progress" ? "border-b-2 border-blue-500 text-blue-500" : "hover:text-gray-700 hover:border-gray-300"}`}
                   onClick={() => setActiveTab("progress")}
+                  aria-selected={activeTab === "progress"}
+                  role="tab"
                 >
                   Progress History
                 </button>
@@ -224,7 +233,11 @@ const CulinaryJourneyPage = () => {
               {activeTab === "plans" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2">
-                    <LearningPlanCard plans={learningPlans} isLoading={isLoadingPlans} onProgressUpdate={handleProgressUpdate} />
+                    <LearningPlanCard 
+                      plans={learningPlans} 
+                      isLoading={isLoadingPlans} 
+                      onProgressUpdate={handleProgressUpdate} 
+                    />
                   </div>
                   <div>
                     <div className="bg-white rounded-lg shadow-md">
@@ -293,8 +306,10 @@ const CulinaryJourneyPage = () => {
                                     {progress.progressPercentage}%
                                   </div>
                                   <button
+                                    id={`delete-progress-${progress.id}`}
                                     onClick={() => handleDeleteProgressUpdate(progress.id)}
                                     className="p-1 hover:bg-gray-100 rounded"
+                                    aria-label={`Delete progress update: ${progress.title}`}
                                   >
                                     <Trash2 className="h-4 w-4 text-gray-500" />
                                   </button>
@@ -305,6 +320,10 @@ const CulinaryJourneyPage = () => {
                                   <div
                                     className="bg-green-500 h-2 rounded-full transition-all duration-500"
                                     style={{ width: `${progress.progressPercentage}%` }}
+                                    role="progressbar"
+                                    aria-valuenow={progress.progressPercentage}
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
                                   ></div>
                                 </div>
                               </div>

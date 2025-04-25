@@ -15,7 +15,6 @@ const learningPlanSchema = z.object({
   startDate: z.date().optional().nullable(),
   estimatedEndDate: z.date().optional().nullable(),
   progress: z.coerce.number().default(0),
-  total: z.coerce.number().default(0),
 });
 
 class ErrorBoundary extends Component {
@@ -48,7 +47,6 @@ const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
       startDate: null,
       estimatedEndDate: null,
       progress: 0,
-      total: 0,
     },
   });
 
@@ -73,7 +71,6 @@ const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
         startDate: editingPlan.startDate ? new Date(editingPlan.startDate) : null,
         estimatedEndDate: editingPlan.estimatedEndDate ? new Date(editingPlan.estimatedEndDate) : null,
         progress: editingPlan.progress || 0,
-        total: editingPlan.total || 0,
       });
       setSelectedStartDate(editingPlan.startDate ? new Date(editingPlan.startDate) : null);
       setSelectedEndDate(editingPlan.estimatedEndDate ? new Date(editingPlan.estimatedEndDate) : null);
@@ -136,8 +133,14 @@ const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
       return;
     }
 
+    const completedTopics = data.topics.filter(topic => topic.completed).length;
+    const progressPercentage = data.topics.length > 0 
+      ? Math.round((completedTopics / data.topics.length) * 100)
+      : 0;
+
     const payload = {
       ...data,
+      progress: progressPercentage,
       startDate: data.startDate ? format(data.startDate, "yyyy-MM-dd") : null,
       estimatedEndDate: data.estimatedEndDate ? format(data.estimatedEndDate, "yyyy-MM-dd") : null,
     };
@@ -358,26 +361,32 @@ const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
               <div className="max-h-[70vh] overflow-y-auto px-6 pb-6">
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Plan Title</label>
+                    <label htmlFor="plan-title" className="block text-sm font-medium mb-1">Plan Title</label>
                     <input
+                      id="plan-title"
+                      name="title"
                       {...form.register("title")}
                       className="w-full border rounded-md px-3 py-2"
                       placeholder="E.g., Master Italian Cooking"
+                      aria-describedby={form.formState.errors.title ? "title-error" : undefined}
                     />
                     {form.formState.errors.title && (
-                      <p className="text-red-500 text-sm">{form.formState.errors.title.message}</p>
+                      <p id="title-error" className="text-red-500 text-sm">{form.formState.errors.title.message}</p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <label htmlFor="plan-description" className="block text-sm font-medium mb-1">Description</label>
                     <textarea
+                      id="plan-description"
+                      name="description"
                       {...form.register("description")}
                       className="w-full border rounded-md px-3 py-2 h-20"
                       placeholder="Describe your learning plan goals and what you want to achieve"
+                      aria-describedby={form.formState.errors.description ? "description-error" : undefined}
                     />
                     {form.formState.errors.description && (
-                      <p className="text-red-500 text-sm">{form.formState.errors.description.message}</p>
+                      <p id="description-error" className="text-red-500 text-sm">{form.formState.errors.description.message}</p>
                     )}
                   </div>
 
@@ -388,6 +397,7 @@ const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
                         type="button"
                         onClick={addTopic}
                         className="border border-gray-300 px-3 py-1 rounded-md text-sm hover:bg-gray-50 flex items-center"
+                        aria-label="Add new topic"
                       >
                         <PlusCircle className="h-4 w-4 mr-1" />
                         Add Topic
@@ -396,13 +406,19 @@ const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
                     {form.watch("topics").map((_, index) => (
                       <div key={index} className="flex items-start gap-2">
                         <div className="flex-1">
+                          <label htmlFor={`topic-${index}`} className="sr-only">Topic {index + 1}</label>
                           <input
+                            id={`topic-${index}`}
+                            name={`topics.${index}.title`}
                             {...form.register(`topics.${index}.title`)}
                             className="w-full border rounded-md px-3 py-2"
                             placeholder={`Topic ${index + 1} (e.g., Pasta Making)`}
+                            aria-describedby={form.formState.errors.topics?.[index]?.title ? `topic-${index}-error` : undefined}
                           />
                           {form.formState.errors.topics?.[index]?.title && (
-                            <p className="text-red-500 text-sm">{form.formState.errors.topics[index].title.message}</p>
+                            <p id={`topic-${index}-error`} className="text-red-500 text-sm">
+                              {form.formState.errors.topics[index].title.message}
+                            </p>
                           )}
                         </div>
                         <button
@@ -410,6 +426,7 @@ const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
                           onClick={() => removeTopic(index)}
                           className="mt-1 p-2 hover:bg-gray-100 rounded"
                           disabled={form.watch("topics").length <= 1}
+                          aria-label={`Remove topic ${index + 1}`}
                         >
                           <XCircle className="h-4 w-4 text-gray-500" />
                         </button>
@@ -419,8 +436,10 @@ const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Start Date</label>
+                      <label htmlFor="start-date" className="block text-sm font-medium mb-1">Start Date</label>
                       <input
+                        id="start-date"
+                        name="startDate"
                         type="date"
                         value={selectedStartDate ? format(selectedStartDate, "yyyy-MM-dd") : ""}
                         onChange={(e) => {
@@ -432,8 +451,10 @@ const LearningPlanCard = ({ plans, isLoading, onProgressUpdate }) => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Target Completion Date</label>
+                      <label htmlFor="end-date" className="block text-sm font-medium mb-1">Target Completion Date</label>
                       <input
+                        id="end-date"
+                        name="estimatedEndDate"
                         type="date"
                         value={selectedEndDate ? format(selectedEndDate, "yyyy-MM-dd") : ""}
                         onChange={(e) => {

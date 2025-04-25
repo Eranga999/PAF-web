@@ -15,7 +15,7 @@ import {
   Copy,
   Info,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import Navbar from "../../components/Navbar.jsx";
 import Footer from "../../components/Footer.jsx";
@@ -49,7 +49,9 @@ const LearningPlanPage = () => {
   const [communityPlans, setCommunityPlans] = useState([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const [error, setError] = useState(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const form = useForm({
     resolver: zodResolver(learningPlanFormSchema),
@@ -352,11 +354,21 @@ const LearningPlanPage = () => {
         throw new Error(`Failed to copy plan: ${errorText}`);
       }
 
-      const success = await fetchUserPlans(token);
-      if (success) {
-        setActiveTab("my-plans");
-        setError("Plan copied successfully!");
-      }
+      // Immediately refresh the plans
+      await Promise.all([fetchUserPlans(token), fetchCommunityPlans(token)]);
+      
+      // Switch to my-plans tab
+      setActiveTab("my-plans");
+      
+      // Show success message with animation
+      setShowSuccessMessage(true);
+      setError(null);
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+
     } catch (err) {
       console.error("Error copying plan:", err);
       setError(`Failed to copy the plan: ${err.message}`);
@@ -396,9 +408,18 @@ const LearningPlanPage = () => {
         throw new Error(`Failed to delete plan: ${errorText}`);
       }
 
-      setUserPlans(userPlans.filter((plan) => plan.id !== planId));
-      setCommunityPlans(communityPlans.filter((plan) => plan.id !== planId));
-      setError("Plan deleted successfully!");
+      // Immediately refresh both user plans and community plans
+      await Promise.all([fetchUserPlans(token), fetchCommunityPlans(token)]);
+      
+      // Show success message with animation
+      setShowSuccessMessage(true);
+      setError(null);
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+
     } catch (err) {
       console.error("Error deleting plan:", err);
       setError(`Failed to delete the plan: ${err.message}`);
@@ -438,6 +459,11 @@ const LearningPlanPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
+      {showSuccessMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-down">
+          Plan copied successfully!
+        </div>
+      )}
 
       <div className="pt-20">
         <div className="container mx-auto px-4 py-12">
