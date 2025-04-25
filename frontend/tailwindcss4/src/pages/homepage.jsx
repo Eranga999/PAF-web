@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -13,7 +13,9 @@ const HomePage = () => {
   const [commentText, setCommentText] = useState('');
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch all posts from all users
   const fetchPosts = async () => {
@@ -64,6 +66,7 @@ const HomePage = () => {
       const response = await fetch('http://localhost:8080/api/learning-plans', {
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       });
       if (response.ok) {
@@ -233,7 +236,24 @@ const HomePage = () => {
   useEffect(() => {
     fetchPosts();
     fetchLearningPlans();
-  }, []);
+
+    // Check if we have a success message in the location state
+    if (location.state?.planCopied) {
+      setShowSuccessMessage(true);
+      // Remove the state after showing the message
+      window.history.replaceState({}, document.title);
+      
+      // Hide the message after 3 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+
+      // Refresh learning plans with a slight delay for better UX
+      setTimeout(() => {
+        fetchLearningPlans();
+      }, 500);
+    }
+  }, [location.state]);
 
   // Get current user's email from token
   const getCurrentUserEmail = () => {
@@ -254,6 +274,11 @@ const HomePage = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       <Navbar />
+      {showSuccessMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-down">
+          Plan copied successfully!
+        </div>
+      )}
       {selectedPost ? (
         // Full-screen post detail view
         <div className="flex flex-col min-h-screen bg-gray-100">
