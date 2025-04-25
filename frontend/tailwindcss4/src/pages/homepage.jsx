@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2, Search, ChevronRight, Smile, Send, MoreHorizontal, Clock, ThumbsUp, Award } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2, Search, ChevronRight, Smile, Send, MoreHorizontal, Clock, ThumbsUp, Award, Grid, List } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -14,8 +14,60 @@ const HomePage = () => {
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('latest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [viewMode, setViewMode] = useState('grid');
+  const postsPerPage = 12;
   const navigate = useNavigate();
   const location = useLocation();
+  const observer = useRef();
+
+  const lastPostElementRef = useCallback(node => {
+    if (isLoadingPosts) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setCurrentPage(prevPage => prevPage + 1);
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [isLoadingPosts, hasMore]);
+
+  // Filter and sort posts
+  const filteredPosts = useMemo(() => {
+    return posts
+      .filter(post => {
+        const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          post.description?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = filterCategory === 'all' || post.category === filterCategory;
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'latest':
+            return new Date(b.createdDate) - new Date(a.createdDate);
+          case 'oldest':
+            return new Date(a.createdDate) - new Date(b.createdDate);
+          case 'popular':
+            return (b.likedBy?.length || 0) - (a.likedBy?.length || 0);
+          default:
+            return 0;
+        }
+      });
+  }, [posts, searchTerm, filterCategory, sortBy]);
+
+  // Get paginated posts
+  const paginatedPosts = useMemo(() => {
+    const lastPostIndex = currentPage * postsPerPage;
+    return filteredPosts.slice(0, lastPostIndex);
+  }, [filteredPosts, currentPage]);
+
+  useEffect(() => {
+    setHasMore(paginatedPosts.length < filteredPosts.length);
+  }, [paginatedPosts, filteredPosts]);
 
   // Fetch all posts from all users
   const fetchPosts = async () => {
@@ -272,7 +324,7 @@ const HomePage = () => {
   const currentUserEmail = getCurrentUserEmail();
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
       <Navbar />
       {showSuccessMessage && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-down">
@@ -305,18 +357,20 @@ const HomePage = () => {
                 </div>
               </div>
               {selectedPost.mediaUrls && selectedPost.mediaUrls.length > 0 ? (
-                <img
-                  src={`http://localhost:8080/api/images/${selectedPost.mediaUrls[0]}`}
-                  alt="Post media"
-                  className="w-full h-96 object-cover rounded-lg mb-4"
-                  onError={(e) => {
-                    console.error('HomePage.jsx - Failed to load image in detail view:', selectedPost.mediaUrls[0]);
-                    e.target.src = 'https://via.placeholder.com/300';
-                  }}
-                  onLoad={() => console.log('HomePage.jsx - Detail view image loaded successfully:', selectedPost.mediaUrls[0])}
-                />
+                <div className="aspect-[16/9] w-full overflow-hidden rounded-lg">
+                  <img
+                    src={`http://localhost:8080/api/images/${selectedPost.mediaUrls[0]}`}
+                    alt="Post media"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      console.error('HomePage.jsx - Failed to load image in detail view:', selectedPost.mediaUrls[0]);
+                      e.target.src = 'https://via.placeholder.com/300';
+                    }}
+                    onLoad={() => console.log('HomePage.jsx - Detail view image loaded successfully:', selectedPost.mediaUrls[0])}
+                  />
+                </div>
               ) : (
-                <div className="w-full h-96 bg-gray-200 flex items-center justify-center rounded-lg mb-4">
+                <div className="aspect-[16/9] w-full bg-gray-100 flex items-center justify-center rounded-lg">
                   <Camera className="h-12 w-12 text-gray-400" />
                 </div>
               )}
@@ -590,15 +644,54 @@ const HomePage = () => {
             </p>
           </div>
 
-          {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-12">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search recipes, ingredients, or users..."
-                className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-              />
+          {/* Advanced Search and Filters */}
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-12">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search recipes, ingredients, or users..."
+                  className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex gap-4 items-center">
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="main">Main Dishes</option>
+                  <option value="dessert">Desserts</option>
+                  <option value="appetizer">Appetizers</option>
+                </select>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="latest">Latest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="popular">Most Popular</option>
+                </select>
+                <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                  >
+                    <Grid className="h-5 w-5 text-gray-600" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                  >
+                    <List className="h-5 w-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -606,7 +699,10 @@ const HomePage = () => {
           <div className="mb-12">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Your Learning Plans</h2>
-              <button className="text-blue-600 hover:text-blue-700 flex items-center">
+              <button
+                onClick={() => navigate('/learningplan')}
+                className="text-blue-600 hover:text-blue-700 flex items-center"
+              >
                 View All <ChevronRight className="ml-1" />
               </button>
             </div>
@@ -615,41 +711,42 @@ const HomePage = () => {
                 <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
               </div>
             ) : learningPlans.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {learningPlans.map((plan) => (
-                  <div
-                    key={plan.id}
-                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6"
-                  >
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{plan.title}</h3>
-                    <p className="text-gray-600 text-sm mb-4">{plan.description}</p>
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-gray-700">Progress</span>
-                        <span className="text-sm font-medium text-blue-600">{calculateProgress(plan)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${calculateProgress(plan)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {plan.topics && plan.topics.slice(0, 3).map((topic, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <div className={`h-4 w-4 rounded-full ${topic.completed ? 'bg-green-500' : 'border-2 border-gray-300'}`}></div>
-                          <span className={`text-sm ${topic.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                            {topic.title}
-                          </span>
+              <div className="relative">
+                <div className="overflow-x-auto pb-4 hide-scrollbar">
+                  <div className="flex gap-6">
+                    {learningPlans.slice(0, 4).map((plan) => (
+                      <div
+                        key={plan.id}
+                        className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 min-w-[300px] flex-shrink-0"
+                      >
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">{plan.title}</h3>
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{plan.description}</p>
+                        <div className="mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-gray-700">Progress</span>
+                            <span className="text-sm font-medium text-blue-600">{plan.progress || 0}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${plan.progress || 0}%` }}
+                            ></div>
+                          </div>
                         </div>
-                      ))}
-                      {plan.topics && plan.topics.length > 3 && (
-                        <p className="text-sm text-gray-500">+{plan.topics.length - 3} more topics</p>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+                {learningPlans.length > 4 && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2">
+                    <button
+                      onClick={() => navigate('/learningplan')}
+                      className="p-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
+                    >
+                      <ChevronRight className="h-6 w-6 text-gray-600" />
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-md p-8 text-center">
@@ -668,76 +765,91 @@ const HomePage = () => {
           {/* Posts Section */}
           <div className="mb-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Posts</h2>
-            {isLoadingPosts ? (
+            {isLoadingPosts && currentPage === 1 ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
               </div>
-            ) : posts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {posts.map((post) => (
-                  <div
-                    key={post.id}
-                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
-                  >
-                    {post.mediaUrls && post.mediaUrls.length > 0 ? (
-                      <div className="relative h-48">
-                        <img
-                          src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
-                          alt="Post media"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.src = 'https://via.placeholder.com/300';
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                      </div>
-                    ) : (
-                      <div className="h-48 bg-gray-100 flex items-center justify-center">
-                        <Camera className="h-12 w-12 text-gray-400" />
-                      </div>
-                    )}
-                    <div className="p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-gray-500 text-sm">
-                            {post.userName ? post.userName.charAt(0).toUpperCase() : 'U'}
-                          </span>
+            ) : paginatedPosts.length > 0 ? (
+              <>
+                <div className={viewMode === 'grid' ? 
+                  'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 
+                  'space-y-6'
+                }>
+                  {paginatedPosts.map((post, index) => {
+                    const isLastElement = index === paginatedPosts.length - 1;
+                    return (
+                      <div
+                        key={post.id}
+                        ref={isLastElement ? lastPostElementRef : null}
+                        className={`bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden ${
+                          viewMode === 'list' ? 'flex' : ''
+                        }`}
+                      >
+                        {post.mediaUrls && post.mediaUrls.length > 0 ? (
+                          <div className={`${viewMode === 'list' ? 'w-72' : 'w-full'} aspect-[4/3] overflow-hidden`}>
+                            <img
+                              src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
+                              alt="Post media"
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                              onError={(e) => {
+                                e.target.src = 'https://via.placeholder.com/300';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className={`${viewMode === 'list' ? 'w-72' : 'w-full'} aspect-[4/3] bg-gray-100 flex items-center justify-center`}>
+                            <Camera className="h-12 w-12 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="p-6">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-500 text-sm">
+                                {post.userName ? post.userName.charAt(0).toUpperCase() : 'U'}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold">{post.userName || 'Unknown User'}</p>
+                              <p className="text-xs text-gray-500">{post.createdDate}</p>
+                            </div>
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
+                          {post.description && (
+                            <p className="text-gray-600 text-sm mb-4 line-clamp-2">{post.description}</p>
+                          )}
+                          <div className="flex gap-4">
+                            <button
+                              onClick={() => handleLikePost(post.id)}
+                              className="flex items-center gap-1 text-gray-600 hover:text-red-500 transition-colors"
+                            >
+                              <Heart
+                                className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
+                              />
+                              <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
+                            </button>
+                            <button
+                              onClick={() => handlePostClick(post)}
+                              className="flex items-center gap-1 text-gray-600 hover:text-blue-500 transition-colors"
+                            >
+                              <MessageCircle className="h-5 w-5" />
+                              <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
+                            </button>
+                            <button className="flex items-center gap-1 text-gray-600 hover:text-green-500 transition-colors">
+                              <Share2 className="h-5 w-5" />
+                              <span className="text-sm">Share</span>
+                            </button>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold">{post.userName || 'Unknown User'}</p>
-                          <p className="text-xs text-gray-500">{post.createdDate}</p>
-                        </div>
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
-                      {post.description && (
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{post.description}</p>
-                      )}
-                      <div className="flex gap-4">
-                        <button
-                          onClick={() => handleLikePost(post.id)}
-                          className="flex items-center gap-1 text-gray-600 hover:text-red-500 transition-colors"
-                        >
-                          <Heart
-                            className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
-                          />
-                          <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
-                        </button>
-                        <button
-                          onClick={() => handlePostClick(post)}
-                          className="flex items-center gap-1 text-gray-600 hover:text-blue-500 transition-colors"
-                        >
-                          <MessageCircle className="h-5 w-5" />
-                          <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
-                        </button>
-                        <button className="flex items-center gap-1 text-gray-600 hover:text-green-500 transition-colors">
-                          <Share2 className="h-5 w-5" />
-                          <span className="text-sm">Share</span>
-                        </button>
-                      </div>
-                    </div>
+                    );
+                  })}
+                </div>
+                {isLoadingPosts && (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             ) : (
               <div className="bg-white rounded-xl shadow-md p-8 text-center">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
