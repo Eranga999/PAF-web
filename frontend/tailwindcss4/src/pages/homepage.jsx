@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2, Search, ChevronRight } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -272,7 +272,7 @@ const HomePage = () => {
   const currentUserEmail = getCurrentUserEmail();
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <Navbar />
       {showSuccessMessage && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-down">
@@ -480,125 +480,174 @@ const HomePage = () => {
       ) : (
         // Main homepage content
         <main className="flex-grow container mx-auto px-4 py-8 mt-16">
-          <h1 className="text-2xl font-bold mb-6">Discover</h1>
+          {/* Hero Section */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Discover Culinary Delights
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Explore recipes, share your cooking journey, and connect with fellow food enthusiasts.
+            </p>
+          </div>
 
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-4">Your Learning Plans</h2>
+          {/* Search Bar */}
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search recipes, ingredients, or users..."
+                className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+              />
+            </div>
+          </div>
+
+          {/* Learning Plans Section */}
+          <div className="mb-12">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Your Learning Plans</h2>
+              <button className="text-blue-600 hover:text-blue-700 flex items-center">
+                View All <ChevronRight className="ml-1" />
+              </button>
+            </div>
             {isLoadingPlans ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full" />
+              <div className="flex justify-center py-8">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
               </div>
             ) : learningPlans.length > 0 ? (
-              <div className="flex overflow-x-auto space-x-4 pb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {learningPlans.map((plan) => (
                   <div
                     key={plan.id}
-                    className="bg-white rounded-xl shadow-md p-4 w-64 flex-shrink-0"
+                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6"
                   >
-                    <h3 className="text-md font-semibold text-gray-900 truncate">{plan.title}</h3>
-                    <p className="text-gray-600 text-sm mt-1 truncate">{plan.description}</p>
-                    <div className="mt-2">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-medium text-gray-700">Progress</span>
-                        <span className="text-xs font-medium text-blue-600">{calculateProgress(plan)}%</span>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{plan.title}</h3>
+                    <p className="text-gray-600 text-sm mb-4">{plan.description}</p>
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-gray-700">Progress</span>
+                        <span className="text-sm font-medium text-blue-600">{calculateProgress(plan)}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-blue-600 h-1.5 rounded-full"
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                           style={{ width: `${calculateProgress(plan)}%` }}
                         ></div>
                       </div>
                     </div>
-                    <div className="mt-2">
-                      <h4 className="text-xs font-medium text-gray-700 mb-1">Topics</h4>
-                      <div className="space-y-1 max-h-20 overflow-y-auto">
-                        {plan.topics && plan.topics.map((topic, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <div className={`h-4 w-4 rounded-full ${topic.completed ? 'bg-green-500' : 'border-2 border-gray-300'}`}></div>
-                            <span className={`text-xs ${topic.completed ? 'line-through text-gray-500' : 'text-gray-800'} truncate`}>
-                              {topic.title}
-                            </span>
-                          </div>
-                        ))}
+                    <div className="space-y-2">
+                      {plan.topics && plan.topics.slice(0, 3).map((topic, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <div className={`h-4 w-4 rounded-full ${topic.completed ? 'bg-green-500' : 'border-2 border-gray-300'}`}></div>
+                          <span className={`text-sm ${topic.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                            {topic.title}
+                          </span>
+                        </div>
+                      ))}
+                      {plan.topics && plan.topics.length > 3 && (
+                        <p className="text-sm text-gray-500">+{plan.topics.length - 3} more topics</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Plus className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Learning Plans Yet</h3>
+                <p className="text-gray-600 mb-4">Start your culinary journey by creating a learning plan</p>
+                <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                  Create Plan
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Posts Section */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Posts</h2>
+            {isLoadingPosts ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+              </div>
+            ) : posts.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {posts.map((post) => (
+                  <div
+                    key={post.id}
+                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
+                  >
+                    {post.mediaUrls && post.mediaUrls.length > 0 ? (
+                      <div className="relative h-48">
+                        <img
+                          src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
+                          alt="Post media"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/300';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                      </div>
+                    ) : (
+                      <div className="h-48 bg-gray-100 flex items-center justify-center">
+                        <Camera className="h-12 w-12 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                          <span className="text-gray-500 text-sm">
+                            {post.userName ? post.userName.charAt(0).toUpperCase() : 'U'}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{post.userName || 'Unknown User'}</p>
+                          <p className="text-xs text-gray-500">{post.createdDate}</p>
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
+                      {post.description && (
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{post.description}</p>
+                      )}
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => handleLikePost(post.id)}
+                          className="flex items-center gap-1 text-gray-600 hover:text-red-500 transition-colors"
+                        >
+                          <Heart
+                            className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
+                          />
+                          <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
+                        </button>
+                        <button
+                          onClick={() => handlePostClick(post)}
+                          className="flex items-center gap-1 text-gray-600 hover:text-blue-500 transition-colors"
+                        >
+                          <MessageCircle className="h-5 w-5" />
+                          <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
+                        </button>
+                        <button className="flex items-center gap-1 text-gray-600 hover:text-green-500 transition-colors">
+                          <Share2 className="h-5 w-5" />
+                          <span className="text-sm">Share</span>
+                        </button>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="bg-white rounded-xl shadow-md p-6 text-center">
-                <p className="text-gray-500">No learning plans yet. Create one to get started!</p>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-6 mb-20">
-            {isLoadingPosts ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full" />
-              </div>
-            ) : posts.length > 0 ? (
-              posts.map((post) => (
-                <div key={post.id} className="bg-white rounded-2xl shadow-md p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      <span className="text-gray-500 text-sm">
-                        {post.userName ? post.userName.charAt(0).toUpperCase() : 'U'}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">{post.userName || 'Unknown User'}</p>
-                      <p className="text-xs text-gray-500">{post.createdDate}</p>
-                    </div>
-                  </div>
-                  {post.mediaUrls && post.mediaUrls.length > 0 ? (
-                    <img
-                      src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
-                      alt="Post media"
-                      className="w-full h-64 object-cover rounded-lg mb-3 cursor-pointer"
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/300';
-                      }}
-                      onClick={() => handlePostClick(post)}
-                    />
-                  ) : (
-                    <div
-                      className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg mb-3 cursor-pointer"
-                      onClick={() => handlePostClick(post)}
-                    >
-                      <Camera className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                  <div className="mt-2">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{post.title || 'Untitled Post'}</p>
-                  </div>
-                  <div className="flex gap-4 mt-1">
-                    <button
-                      onClick={() => handleLikePost(post.id)}
-                      className="flex items-center gap-1 text-gray-600 hover:text-red-500"
-                    >
-                      <Heart
-                        className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
-                      />
-                      <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
-                    </button>
-                    <button
-                      onClick={() => handlePostClick(post)}
-                      className="flex items-center gap-1 text-gray-600"
-                    >
-                      <MessageCircle className="h-5 w-5" />
-                      <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
-                    </button>
-                    <button className="flex items-center gap-1 text-gray-600">
-                      <Share2 className="h-5 w-5" />
-                      <span className="text-sm">33</span>
-                    </button>
-                  </div>
+              <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Camera className="h-8 w-8 text-blue-600" />
                 </div>
-              ))
-            ) : (
-              <div className="bg-white rounded-2xl shadow-md p-6 text-center">
-                <p className="text-gray-500">No posts yet. Be the first to share something!</p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Posts Yet</h3>
+                <p className="text-gray-600 mb-4">Be the first to share your culinary creations!</p>
+                <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                  Create Post
+                </button>
               </div>
             )}
           </div>
@@ -606,7 +655,7 @@ const HomePage = () => {
           {/* Floating Action Button */}
           <button
             onClick={() => navigate('/profile')}
-            className="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 z-50"
+            className="fixed bottom-8 right-8 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors hover:scale-110 transform duration-300 z-50"
           >
             <Plus className="h-6 w-6" />
           </button>
