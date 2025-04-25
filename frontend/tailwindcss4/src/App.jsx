@@ -11,7 +11,7 @@ import ProfilePage from "./pages/ProfilePage";
 import Homepage from "./pages/homepage";
 import ExplorePage from "./pages/ExplorePage";
 import UserProfilePage from "./pages/UserProfilePage";
-
+import Signup from "./pages/Signup";
 function App() {
   return (
     <Routes>
@@ -24,6 +24,7 @@ function App() {
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/explore" element={<ExplorePage />} />
       <Route path="/users/:userId" element={<UserProfilePage />} />
+      <Route path="/signup" element={<Signup />} />
     </Routes>
   );
 }
