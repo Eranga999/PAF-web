@@ -220,4 +220,42 @@ public class PostController {
             return ResponseEntity.status(500).body(null);
         }
     }
+
+    @PutMapping("/posts/{postId}/comment/{commentIndex}")
+    public ResponseEntity<Post> editComment(@PathVariable String postId, @PathVariable int commentIndex, @RequestBody Comment updatedComment) {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            Post updatedPost = postService.editComment(postId, commentIndex, updatedComment, email);
+            return ResponseEntity.ok(updatedPost);
+        } catch (IllegalAccessException e) {
+            System.err.println("Unauthorized comment edit: " + e.getMessage());
+            return ResponseEntity.status(403).body(null);
+        } catch (Exception e) {
+            System.err.println("Error editing comment: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @DeleteMapping("/posts/{postId}/comment/{commentIndex}")
+    public ResponseEntity<Post> deleteComment(@PathVariable String postId, @PathVariable int commentIndex) {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            Post updatedPost = postService.deleteComment(postId, commentIndex, email);
+            return ResponseEntity.ok(updatedPost);
+        } catch (IllegalAccessException e) {
+            System.err.println("Unauthorized comment deletion: " + e.getMessage());
+            return ResponseEntity.status(403).body(null);
+        } catch (Exception e) {
+            System.err.println("Error deleting comment: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
+    }
 }

@@ -72,4 +72,38 @@ public class PostService {
         post.getComments().add(comment);
         return postRepository.save(post);
     }
+
+    public Post editComment(String postId, int commentIndex, Comment updatedComment, String userEmail) throws IllegalAccessException {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        List<Comment> comments = post.getComments();
+        if (commentIndex < 0 || commentIndex >= comments.size()) {
+            throw new RuntimeException("Comment not found at index: " + commentIndex);
+        }
+        Comment existingComment = comments.get(commentIndex);
+        if (!existingComment.getUserEmail().equals(userEmail)) {
+            throw new IllegalAccessException("User is not authorized to edit this comment");
+        }
+        updatedComment.setUserEmail(userEmail);
+        updatedComment.setCreatedDate(existingComment.getCreatedDate()); // Preserve original date
+        comments.set(commentIndex, updatedComment);
+        post.setComments(comments);
+        return postRepository.save(post);
+    }
+
+    public Post deleteComment(String postId, int commentIndex, String userEmail) throws IllegalAccessException {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        List<Comment> comments = post.getComments();
+        if (commentIndex < 0 || commentIndex >= comments.size()) {
+            throw new RuntimeException("Comment not found at index: " + commentIndex);
+        }
+        Comment comment = comments.get(commentIndex);
+        if (!comment.getUserEmail().equals(userEmail) && !post.getUserEmail().equals(userEmail)) {
+            throw new IllegalAccessException("User is not authorized to delete this comment");
+        }
+        comments.remove(commentIndex);
+        post.setComments(comments);
+        return postRepository.save(post);
+    }
 }
