@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2, Search, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2, Search, ChevronRight, Smile, Send, MoreHorizontal, Clock, ThumbsUp, Award } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -388,90 +388,190 @@ const HomePage = () => {
                   ))}
                 </div>
               )}
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Comments</h4>
-                {selectedPost.comments && selectedPost.comments.length > 0 ? (
-                  <div className="space-y-3">
-                    {selectedPost.comments.map((comment, index) => (
-                      <div key={index} className="border-t pt-3 relative">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="text-sm font-semibold">{comment.userEmail}</p>
-                            <p className="text-sm text-gray-600">{comment.content}</p>
-                            <p className="text-xs text-gray-500">{comment.createdDate}</p>
-                          </div>
-                          {(comment.userEmail === currentUserEmail || selectedPost.userEmail === currentUserEmail) && (
-                            <div className="flex gap-2">
-                              {comment.userEmail === currentUserEmail && (
-                                <button
-                                  onClick={() => {
-                                    setEditingComment({ postId: selectedPost.id, commentIndex: index });
-                                    setEditCommentText(comment.content);
-                                  }}
-                                  className="text-blue-500 hover:text-blue-600"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleDeleteComment(selectedPost.id, index)}
-                                className="text-red-500 hover:text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No comments yet.</p>
-                )}
-              </div>
-              {editingComment && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                  <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                    <h3 className="text-lg font-semibold mb-4">Edit Comment</h3>
-                    <textarea
-                      value={editCommentText}
-                      onChange={(e) => setEditCommentText(e.target.value)}
-                      className="w-full border rounded-md px-3 py-2 h-20 mb-4"
-                      placeholder="Edit your comment..."
-                    />
-                    <div className="flex justify-end gap-4">
-                      <button
-                        onClick={() => setEditingComment(null)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => handleEditComment(editingComment.postId, editingComment.commentIndex)}
-                        disabled={!editCommentText.trim()}
-                        className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50"
-                      >
-                        Save
-                      </button>
-                    </div>
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h4 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    Comments
+                    <span className="bg-blue-100 text-blue-600 text-sm px-2 py-0.5 rounded-full">
+                      {selectedPost.comments?.length || 0}
+                    </span>
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <select className="text-sm text-gray-600 border-0 bg-transparent cursor-pointer hover:text-blue-600 transition-colors">
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="popular">Most Popular</option>
+                    </select>
                   </div>
                 </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="w-full border rounded-md px-3 py-2 text-sm"
-                />
-                <button
-                  onClick={() => handleAddComment(selectedPost.id)}
-                  disabled={!commentText.trim()}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50 text-sm"
-                >
-                  Post
-                </button>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Add Comment Form */}
+                  <div className="p-6 border-b border-gray-100">
+                    <div className="flex gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex-shrink-0 flex items-center justify-center shadow-inner">
+                        <span className="text-white font-semibold text-lg">
+                          {currentUserEmail ? currentUserEmail.charAt(0).toUpperCase() : 'U'}
+                        </span>
+                      </div>
+                      <div className="flex-grow">
+                        <div className="relative bg-gray-50 rounded-2xl p-2 hover:bg-gray-100 transition-colors duration-200">
+                          <textarea
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="Share your thoughts..."
+                            className="w-full px-4 py-3 bg-transparent border-0 focus:ring-0 resize-none text-gray-700 placeholder-gray-400"
+                            rows="2"
+                          />
+                          <div className="flex justify-between items-center px-4 pt-2 border-t border-gray-200">
+                            <div className="flex gap-2">
+                              <button className="p-2 hover:bg-gray-200 rounded-full transition-colors" title="Add emoji">
+                                <Smile className="h-5 w-5 text-gray-500" />
+                              </button>
+                              <button className="p-2 hover:bg-gray-200 rounded-full transition-colors" title="Attach image">
+                                <Camera className="h-5 w-5 text-gray-500" />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => handleAddComment(selectedPost.id)}
+                              disabled={!commentText.trim()}
+                              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                            >
+                              <Send className="h-4 w-4" />
+                              Post
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comments List */}
+                  <div className="divide-y divide-gray-100">
+                    {selectedPost.comments && selectedPost.comments.length > 0 ? (
+                      selectedPost.comments.map((comment, index) => (
+                        <div key={index} className="group hover:bg-gray-50 transition-colors duration-200">
+                          <div className="p-6">
+                            <div className={`flex gap-4 ${editingComment?.commentIndex === index ? 'mb-4' : ''}`}>
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex-shrink-0 flex items-center justify-center shadow-inner">
+                                <span className="text-white font-semibold text-lg">
+                                  {comment.userEmail.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="flex-grow">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-semibold text-gray-900">{comment.userEmail}</p>
+                                      {index === 0 && (
+                                        <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-600 text-xs px-2 py-0.5 rounded-full">
+                                          <Award className="h-3 w-3" />
+                                          Top Commenter
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                      <Clock className="h-3 w-3" />
+                                      {comment.createdDate}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {(comment.userEmail === currentUserEmail || selectedPost.userEmail === currentUserEmail) && (
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                                        {comment.userEmail === currentUserEmail && (
+                                          <button
+                                            onClick={() => {
+                                              setEditingComment({ postId: selectedPost.id, commentIndex: index });
+                                              setEditCommentText(comment.content);
+                                            }}
+                                            className="p-1.5 hover:bg-blue-100 rounded-full transition-colors"
+                                            title="Edit comment"
+                                          >
+                                            <Edit className="h-4 w-4 text-blue-600" />
+                                          </button>
+                                        )}
+                                        <button
+                                          onClick={() => handleDeleteComment(selectedPost.id, index)}
+                                          className="p-1.5 hover:bg-red-100 rounded-full transition-colors"
+                                          title="Delete comment"
+                                        >
+                                          <Trash2 className="h-4 w-4 text-red-600" />
+                                        </button>
+                                      </div>
+                                    )}
+                                    <button className="p-1.5 hover:bg-gray-200 rounded-full transition-colors">
+                                      <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                                    </button>
+                                  </div>
+                                </div>
+                                {editingComment?.commentIndex === index ? (
+                                  <div className="mt-3">
+                                    <textarea
+                                      value={editCommentText}
+                                      onChange={(e) => setEditCommentText(e.target.value)}
+                                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-200"
+                                      rows="3"
+                                    />
+                                    <div className="flex justify-end gap-2 mt-3">
+                                      <button
+                                        onClick={() => setEditingComment(null)}
+                                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => handleEditComment(editingComment.postId, editingComment.commentIndex)}
+                                        disabled={!editCommentText.trim()}
+                                        className="px-6 py-2 text-sm bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 transform hover:scale-105"
+                                      >
+                                        Save Changes
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="mt-2 text-gray-700 leading-relaxed">{comment.content}</p>
+                                    <div className="mt-3 flex items-center gap-4">
+                                      <button className="flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors">
+                                        <ThumbsUp className="h-4 w-4" />
+                                        <span className="text-sm">Like</span>
+                                      </button>
+                                      <button className="flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors">
+                                        <MessageCircle className="h-4 w-4" />
+                                        <span className="text-sm">Reply</span>
+                                      </button>
+                                      <button className="flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors">
+                                        <Share2 className="h-4 w-4" />
+                                        <span className="text-sm">Share</span>
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-12">
+                        <div className="max-w-sm mx-auto text-center">
+                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <MessageCircle className="h-8 w-8 text-blue-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No comments yet</h3>
+                          <p className="text-gray-500 mb-6">Be the first to share your thoughts on this post!</p>
+                          <button
+                            onClick={() => document.querySelector('textarea').focus()}
+                            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 transform hover:scale-105"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            Write a Comment
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </main>
