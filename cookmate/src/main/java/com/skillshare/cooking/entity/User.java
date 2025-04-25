@@ -20,6 +20,8 @@ public class User {
     @Indexed(unique = true)
     private String email;
 
+    private String password; // Add password field for email/password login
+
     private String name;
 
     private String profilePictureUrl;
@@ -31,11 +33,9 @@ public class User {
     private List<String> favoriteCuisines;
 
     private LocalDateTime createdAt;
-    
-    // List of user IDs who are following this user
+
     private List<String> followers = new ArrayList<>();
-    
-    // List of user IDs that this user is following
+
     private List<String> following = new ArrayList<>();
 
     public User() {
@@ -43,12 +43,11 @@ public class User {
         this.followers = new ArrayList<>();
         this.following = new ArrayList<>();
     }
-    
-    // Helper methods for follower/following counts
+
     public int getFollowersCount() {
         return followers != null ? followers.size() : 0;
     }
-    
+
     public int getFollowingCount() {
         return following != null ? following.size() : 0;
     }
