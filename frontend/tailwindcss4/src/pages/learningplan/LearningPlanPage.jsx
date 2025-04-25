@@ -23,6 +23,8 @@ import {
   ChevronRight,
   SortAsc,
   SortDesc,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -68,6 +70,7 @@ const LearningPlanPage = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [filterProgress, setFilterProgress] = useState("all");
   const itemsPerPage = 9;
+  const [expandedTopics, setExpandedTopics] = useState({});
 
   const form = useForm({
     resolver: zodResolver(learningPlanFormSchema),
@@ -510,6 +513,13 @@ const LearningPlanPage = () => {
       });
   };
 
+  const toggleTopicExpansion = (planId) => {
+    setExpandedTopics(prev => ({
+      ...prev,
+      [planId]: !prev[planId]
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
       <Navbar />
@@ -746,14 +756,19 @@ const LearningPlanPage = () => {
                                     </div>
                                   </div>
                                   <div>
-                                    <h4 className="text-sm font-medium text-gray-700 mb-2">Topics to Learn</h4>
+                                    <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
+                                      <span>Topics to Learn</span>
+                                      <span className="text-xs text-gray-500">
+                                        {plan.topics?.length || 0} topics
+                                      </span>
+                                    </h4>
                                     <div className="space-y-2">
-                                      {plan.topics && plan.topics.map((topic, index) => (
+                                      {plan.topics && (expandedTopics[plan.id] ? plan.topics : plan.topics.slice(0, 3)).map((topic, index) => (
                                         <div key={index} className="flex items-center justify-between group/topic">
-                                          <div className="flex items-center gap-3">
+                                          <div className="flex items-center gap-3 w-full">
                                             <button
                                               onClick={() => toggleTopicCompletion(plan.id, index)}
-                                              className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                                              className="p-1 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                                               aria-label={topic.completed ? `Mark ${topic.title} as incomplete` : `Mark ${topic.title} as complete`}
                                             >
                                               {topic.completed ? (
@@ -764,12 +779,30 @@ const LearningPlanPage = () => {
                                                 <div className="h-5 w-5 border-2 border-gray-300 rounded-full group-hover/topic:border-blue-400 transition-colors"></div>
                                               )}
                                             </button>
-                                            <span className={`text-sm ${topic.completed ? "line-through text-gray-500" : "text-gray-800 group-hover/topic:text-blue-600"} transition-colors`}>
+                                            <span className={`text-sm ${topic.completed ? "line-through text-gray-500" : "text-gray-800 group-hover/topic:text-blue-600"} transition-colors truncate`}>
                                               {topic.title}
                                             </span>
                                           </div>
                                         </div>
                                       ))}
+                                      {plan.topics && plan.topics.length > 3 && (
+                                        <button
+                                          onClick={() => toggleTopicExpansion(plan.id)}
+                                          className="w-full mt-2 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center gap-1"
+                                        >
+                                          {expandedTopics[plan.id] ? (
+                                            <>
+                                              Show Less
+                                              <ChevronUp className="h-4 w-4" />
+                                            </>
+                                          ) : (
+                                            <>
+                                              View {plan.topics.length - 3} More
+                                              <ChevronDown className="h-4 w-4" />
+                                            </>
+                                          )}
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                   {(plan.startDate || plan.estimatedEndDate) && (
@@ -856,6 +889,54 @@ const LearningPlanPage = () => {
                                         <Globe className="h-3 w-3 mr-1" />
                                         Public
                                       </div>
+                                    )}
+                                  </div>
+                                  <div className="mt-4">
+                                    <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
+                                      <span>Topics to Learn</span>
+                                      <span className="text-xs text-gray-500">
+                                        {plan.topics?.length || 0} topics
+                                      </span>
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                      {plan.topics && (expandedTopics[plan.id] ? plan.topics : plan.topics.slice(0, 4)).map((topic, index) => (
+                                        <div key={index} className="flex items-center group/topic">
+                                          <button
+                                            onClick={() => toggleTopicCompletion(plan.id, index)}
+                                            className="p-1 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                                            aria-label={topic.completed ? `Mark ${topic.title} as incomplete` : `Mark ${topic.title} as complete`}
+                                          >
+                                            {topic.completed ? (
+                                              <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white">
+                                                <Check className="h-3 w-3" />
+                                              </div>
+                                            ) : (
+                                              <div className="h-5 w-5 border-2 border-gray-300 rounded-full group-hover/topic:border-blue-400 transition-colors"></div>
+                                            )}
+                                          </button>
+                                          <span className={`ml-3 text-sm ${topic.completed ? "line-through text-gray-500" : "text-gray-800 group-hover/topic:text-blue-600"} transition-colors truncate`}>
+                                            {topic.title}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    {plan.topics && plan.topics.length > 4 && (
+                                      <button
+                                        onClick={() => toggleTopicExpansion(plan.id)}
+                                        className="w-full mt-3 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center gap-1"
+                                      >
+                                        {expandedTopics[plan.id] ? (
+                                          <>
+                                            Show Less
+                                            <ChevronUp className="h-4 w-4" />
+                                          </>
+                                        ) : (
+                                          <>
+                                            View {plan.topics.length - 4} More
+                                            <ChevronDown className="h-4 w-4" />
+                                          </>
+                                        )}
+                                      </button>
                                     )}
                                   </div>
                                   <div className="text-gray-600 text-sm flex items-center gap-2">
@@ -1065,45 +1146,56 @@ const LearningPlanPage = () => {
                   <button
                     type="button"
                     onClick={addTopic}
-                    className="border border-gray-200 px-4 py-1 rounded-lg text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors shadow-sm"
+                    className="border border-gray-200 px-4 py-1.5 rounded-lg text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors shadow-sm"
                     aria-label="Add a new topic or skill"
                   >
-                    <PlusCircle className="h-4 w-4 mr-1" />
+                    <PlusCircle className="h-4 w-4 mr-1.5" />
                     Add Topic
                   </button>
                 </div>
-                {form.watch("topics").map((_, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1">
-                        <input
-                          {...form.register(`topics.${index}.title`)}
-                          className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
-                          placeholder={`Topic ${index + 1} (e.g., Pasta Making)`}
-                        />
-                        {form.formState.errors.topics?.[index]?.title && (
-                          <p className="text-red-500 text-xs mt-1">{form.formState.errors.topics[index].title.message}</p>
-                        )}
+                <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4">
+                  {form.watch("topics").map((_, index) => (
+                    <div
+                      key={index}
+                      className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm font-medium text-gray-600">Topic {index + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeTopic(index)}
+                              className="p-1 hover:bg-gray-200 rounded-lg transition-colors ml-auto"
+                              disabled={form.watch("topics").length <= 1}
+                              aria-label={`Remove topic ${index + 1}`}
+                            >
+                              <XCircle className="h-4 w-4 text-gray-500" />
+                            </button>
+                          </div>
+                          <input
+                            {...form.register(`topics.${index}.title`)}
+                            className="w-full border border-gray-200 rounded-lg px-4 py-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm mb-2"
+                            placeholder={`Enter topic name (e.g., Pasta Making)`}
+                          />
+                          {form.formState.errors.topics?.[index]?.title && (
+                            <p className="text-red-500 text-xs mt-1 mb-2">{form.formState.errors.topics[index].title.message}</p>
+                          )}
+                          <textarea
+                            {...form.register(`topics.${index}.description`)}
+                            className="w-full border border-gray-200 rounded-lg px-4 py-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm h-20"
+                            placeholder="Optional topic description"
+                          />
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeTopic(index)}
-                        className="mt-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        disabled={form.watch("topics").length <= 1}
-                        aria-label={`Remove topic ${index + 1}`}
-                      >
-                        <XCircle className="h-5 w-5 text-gray-500" />
-                      </button>
                     </div>
-                    <div>
-                      <textarea
-                        {...form.register(`topics.${index}.description`)}
-                        className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
-                        placeholder="Optional topic description"
-                      />
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {form.watch("topics").length >= 5 && (
+                  <p className="text-sm text-gray-500 italic">
+                    Scroll to see all topics
+                  </p>
+                )}
               </div>
 
               <div>
