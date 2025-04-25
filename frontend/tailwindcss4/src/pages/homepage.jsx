@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Plus, X, Camera } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -11,6 +11,8 @@ const HomePage = () => {
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const [selectedPost, setSelectedPost] = useState(null);
   const [commentText, setCommentText] = useState('');
+  const [editingComment, setEditingComment] = useState(null);
+  const [editCommentText, setEditCommentText] = useState('');
   const navigate = useNavigate();
 
   // Fetch all posts from all users
@@ -151,9 +153,81 @@ const HomePage = () => {
     }
   };
 
+  // Edit a comment
+  const handleEditComment = async (postId, commentIndex) => {
+    if (!editCommentText.trim()) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/posts/${postId}/comment/${commentIndex}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: editCommentText }),
+      });
+      if (response.ok) {
+        const updatedPost = await response.json();
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => (post.id === postId ? updatedPost : post))
+        );
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost(updatedPost);
+        }
+        setEditingComment(null);
+        setEditCommentText('');
+      } else {
+        console.error('HomePage.jsx - Failed to edit comment');
+      }
+    } catch (error) {
+      console.error('HomePage.jsx - Error editing comment:', error);
+    }
+  };
+
+  // Delete a comment
+  const handleDeleteComment = async (postId, commentIndex) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/posts/${postId}/comment/${commentIndex}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const updatedPost = await response.json();
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => (post.id === postId ? updatedPost : post))
+        );
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost(updatedPost);
+        }
+      } else {
+        console.error('HomePage.jsx - Failed to delete comment');
+      }
+    } catch (error) {
+      console.error('HomePage.jsx - Error deleting comment:', error);
+    }
+  };
+
   const handlePostClick = (post) => {
     setSelectedPost(post);
     setCommentText('');
+    setEditingComment(null);
   };
 
   useEffect(() => {
@@ -161,7 +235,7 @@ const HomePage = () => {
     fetchLearningPlans();
   }, []);
 
-  // Get current user's email from token (assuming token contains email)
+  // Get current user's email from token
   const getCurrentUserEmail = () => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -294,10 +368,35 @@ const HomePage = () => {
                 {selectedPost.comments && selectedPost.comments.length > 0 ? (
                   <div className="space-y-3">
                     {selectedPost.comments.map((comment, index) => (
-                      <div key={index} className="border-t pt-3">
-                        <p className="text-sm font-semibold">{comment.userEmail}</p>
-                        <p className="text-sm text-gray-600">{comment.content}</p>
-                        <p className="text-xs text-gray-500">{comment.createdDate}</p>
+                      <div key={index} className="border-t pt-3 relative">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-sm font-semibold">{comment.userEmail}</p>
+                            <p className="text-sm text-gray-600">{comment.content}</p>
+                            <p className="text-xs text-gray-500">{comment.createdDate}</p>
+                          </div>
+                          {(comment.userEmail === currentUserEmail || selectedPost.userEmail === currentUserEmail) && (
+                            <div className="flex gap-2">
+                              {comment.userEmail === currentUserEmail && (
+                                <button
+                                  onClick={() => {
+                                    setEditingComment({ postId: selectedPost.id, commentIndex: index });
+                                    setEditCommentText(comment.content);
+                                  }}
+                                  className="text-blue-500 hover:text-blue-600"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteComment(selectedPost.id, index)}
+                                className="text-red-500 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -305,6 +404,34 @@ const HomePage = () => {
                   <p className="text-gray-500 text-sm">No comments yet.</p>
                 )}
               </div>
+              {editingComment && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                    <h3 className="text-lg font-semibold mb-4">Edit Comment</h3>
+                    <textarea
+                      value={editCommentText}
+                      onChange={(e) => setEditCommentText(e.target.value)}
+                      className="w-full border rounded-md px-3 py-2 h-20 mb-4"
+                      placeholder="Edit your comment..."
+                    />
+                    <div className="flex justify-end gap-4">
+                      <button
+                        onClick={() => setEditingComment(null)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleEditComment(editingComment.postId, editingComment.commentIndex)}
+                        disabled={!editCommentText.trim()}
+                        className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2">
                 <input
                   type="text"
