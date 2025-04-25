@@ -1,10 +1,11 @@
-import { useState, useEffect, Component } from "react";
-import { Calendar, LineChart, GraduationCap, Award, Trash2 } from "lucide-react";
+import { useState, useEffect, Component, useRef, useCallback, useMemo } from "react";
+import { Calendar, LineChart, GraduationCap, Award, Trash2, Grid, List, Globe, Clock, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LearningPlanCard from "../../components/learning/LearningPlanCard.jsx";
 import ProgressCard from "../../components/learning/ProgressCard.jsx";
 import Navbar from "../../components/Navbar.jsx";
 import Footer from "../../components/Footer.jsx";
+import { motion } from 'framer-motion';
 
 class ErrorBoundary extends Component {
   state = { hasError: false };
@@ -28,6 +29,11 @@ const CulinaryJourneyPage = () => {
   const [progressUpdates, setProgressUpdates] = useState([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
+  const [viewMode, setViewMode] = useState('grid');
+  const [filterProgress, setFilterProgress] = useState('all');
+  const [sortBy, setSortBy] = useState('date');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [error, setError] = useState(null);
 
   const handleAuthError = () => {
     localStorage.removeItem("token");
@@ -50,6 +56,38 @@ const CulinaryJourneyPage = () => {
       "Content-Type": "application/json",
     };
   };
+
+  const filteredPlans = useMemo(() => {
+    const plans = activeTab === 'my-plans' ? learningPlans : [];
+    return plans
+      .filter(plan => {
+        let progressMatch = true;
+        if (filterProgress === 'notStarted') {
+          progressMatch = plan.progress === 0;
+        } else if (filterProgress === 'inProgress') {
+          progressMatch = plan.progress > 0 && plan.progress < 100;
+        } else if (filterProgress === 'completed') {
+          progressMatch = plan.progress === 100;
+        }
+
+        return progressMatch;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'date') {
+          return sortOrder === 'asc'
+            ? new Date(a.startDate || 0) - new Date(b.startDate || 0)
+            : new Date(b.startDate || 0) - new Date(a.startDate || 0);
+        } else if (sortBy === 'progress') {
+          return sortOrder === 'asc'
+            ? (a.progress || 0) - (b.progress || 0)
+            : (b.progress || 0) - (a.progress || 0);
+        } else {
+          return sortOrder === 'asc'
+            ? a.title.localeCompare(b.title)
+            : b.title.localeCompare(a.title);
+        }
+      });
+  }, [activeTab, learningPlans, filterProgress, sortBy, sortOrder]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -158,18 +196,29 @@ const CulinaryJourneyPage = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white">
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
         <Navbar />
         <main className="flex-grow pt-20 md:pt-24 pb-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Hero Section */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
-                Your Culinary Learning Journey
-              </h1>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Track your progress, set goals, and master new cooking skills with personalized learning plans
-              </p>
+            <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 py-16">
+              <div className="absolute inset-0 bg-grid-white/[0.2] bg-[size:20px_20px]" />
+              <div className="absolute h-full w-full bg-gradient-to-b from-black/[0.5] to-transparent opacity-50" />
+              <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                  className="text-center"
+                >
+                  <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
+                    Your Culinary Journey
+                  </h1>
+                  <p className="mx-auto mt-4 max-w-2xl text-xl text-gray-100">
+                    Track your progress, discover new recipes, and master the art of cooking
+                  </p>
+                </motion.div>
+              </div>
             </div>
 
             {/* Stats Cards */}
@@ -360,6 +409,99 @@ const CulinaryJourneyPage = () => {
                         ))}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Main Content */}
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+              {isLoadingPlans ? (
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+                </div>
+              ) : error ? (
+                <div className="text-center py-12">
+                  <XCircle className="mx-auto h-12 w-12 text-red-500" />
+                  <h3 className="mt-4 text-lg font-semibold text-gray-900">Error loading plans</h3>
+                  <p className="mt-2 text-gray-600">{error}</p>
+                </div>
+              ) : learningPlans.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="mx-auto h-24 w-24 text-gray-400">
+                    <svg className="h-full w-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold text-gray-900">No learning plans found</h3>
+                  <p className="mt-2 text-gray-600">Create your first learning plan to get started</p>
+                  <button
+                    onClick={() => navigate("/learning-journey/create")}
+                    className="mt-6 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Create Learning Plan
+                  </button>
+                </div>
+              ) : (
+                <div className={viewMode === 'grid' ? 'grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-6'}>
+                  {filteredPlans.map((plan) => (
+                    <motion.div
+                      key={plan.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4 }}
+                      className={`group relative rounded-xl ${
+                        viewMode === 'grid'
+                          ? 'overflow-hidden bg-white/70 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300'
+                          : 'overflow-hidden bg-white/70 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300'
+                      }`}
+                    >
+                      <div className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {plan.title}
+                            </h3>
+                            <p className="mt-2 text-sm text-gray-600 line-clamp-2">{plan.description}</p>
+                          </div>
+                          {plan.isPublic && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <Globe className="mr-1 h-3 w-3" />
+                              Public
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="mt-4">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Progress</span>
+                            <span className="font-medium text-gray-900">{plan.progress}%</span>
+                          </div>
+                          <div className="mt-2 overflow-hidden rounded-full bg-gray-200">
+                            <div
+                              className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-300"
+                              style={{ width: `${plan.progress}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span className="inline-flex items-center text-sm text-gray-600">
+                              <Clock className="mr-1 h-4 w-4" />
+                              {plan.duration}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => navigate(`/learning-journey/${plan.id}`)}
+                            className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700"
+                          >
+                            View Details
+                            <ChevronRight className="ml-1 h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               )}
             </div>
