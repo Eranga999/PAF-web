@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { FcGoogle } from "react-icons/fc";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -60,70 +61,85 @@ const Login = () => {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center"
-      style={{
-        backgroundImage:
-          "url('https://images.unsplash.com/photo-1507521628349-dee9b8e9b4e8')",
-      }}
-    >
-      <div className="bg-black bg-opacity-70 p-8 rounded-xl w-80 text-center shadow-lg border border-cyan-400/30">
-        <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-5 border-2 border-white">
-          <span role="img" aria-label="user" className="text-3xl">
-            👤
-          </span>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-blue-900 p-4">
+      <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl w-full max-w-md shadow-2xl border border-white/20 animate-fadeIn">
+        <div className="flex justify-center mb-6">
+          <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center border-4 border-white/30 transform hover:scale-110 transition-transform duration-300">
+            <span role="img" aria-label="user" className="text-4xl">
+              👤
+            </span>
+          </div>
         </div>
-        <h2 className="text-white text-2xl mb-5">Login to Cookmate</h2>
-        <form onSubmit={handleEmailLogin}>
-          <div className="mb-4">
+        <h2 className="text-white text-3xl font-bold text-center mb-6">Welcome to Cookmate</h2>
+        <div onSubmit={handleEmailLogin}>
+          <div className="mb-5">
             <input
               type="email"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 rounded-lg bg-gray-700 text-white border border-cyan-400/50 focus:outline-none focus:border-cyan-400"
+              className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 placeholder-gray-400"
               required
             />
           </div>
-          <div className="mb-4">
+          <div className="mb-5">
             <input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 rounded-lg bg-gray-700 text-white border border-cyan-400/50 focus:outline-none focus:border-cyan-400"
+              className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 placeholder-gray-400"
               required
             />
           </div>
           <button
-            type="submit"
-            className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600 transition-colors"
+            onClick={handleEmailLogin}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors duration-300 transform hover:scale-105"
           >
             Login
           </button>
-        </form>
-        {error && <p className="text-red-500 mt-2">{error}</p>}
-        <p className="text-white mt-3">
-          <a href="/forgot-password" className="text-cyan-400 hover:underline">
+        </div>
+        {error && (
+          <p className="text-red-400 text-center mt-3 animate-pulse">{error}</p>
+        )}
+        <p className="text-white text-center mt-4">
+          <a href="/forgot-password" className="text-blue-400 hover:text-blue-300 transition-colors duration-200">
             Forgot password?
           </a>
         </p>
-        <div className="mt-5">
-          <p className="text-white mb-2">Or login with</p>
-          <button
-            onClick={handleGoogleLogin}
-            className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform"
-          >
-            <img src="/google-icon.png" alt="Google Icon" className="w-6 h-6" />
-          </button>
+        <div className="mt-6">
+          <p className="text-white text-center mb-3">Or login with</p>
+          <div className="flex justify-center">
+            <button
+              onClick={handleGoogleLogin}
+              className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-300 shadow-md"
+            >
+              <FcGoogle className="w-7 h-7" />
+            </button>
+          </div>
         </div>
-        <p className="text-cyan-400 mt-5">
+        <p className="text-white text-center mt-6">
           Don't have an account?{" "}
-          <a href="/signup" className="text-cyan-400 hover:underline">
+          <a href="/signup" className="text-blue-400 hover:text-blue-300 transition-colors duration-200">
             Sign Up
           </a>
         </p>
       </div>
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.6s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
