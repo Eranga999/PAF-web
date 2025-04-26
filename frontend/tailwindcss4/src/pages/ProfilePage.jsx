@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, Plus, Edit, Trash2, Loader2, X, Heart, MessageCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import ImageCarousel from '../components/ImageCarousel';
 
 // Define schemas for profile and post using Zod
 const profileSchema = z.object({
@@ -495,23 +496,8 @@ const ProfilePage = () => {
                   <p className="text-xs text-gray-500">{selectedPost.createdDate}</p>
                 </div>
               </div>
-              {selectedPost.mediaUrls && selectedPost.mediaUrls.length > 0 ? (
-                <img
-                  src={`http://localhost:8080/api/images/${selectedPost.mediaUrls[0]}`}
-                  alt="Post media"
-                  className="w-full h-96 object-cover rounded-lg mb-4"
-                  onError={(e) => {
-                    console.error('ProfilePage.jsx - Failed to load image in detail view:', selectedPost.mediaUrls[0]);
-                    e.target.src = 'https://via.placeholder.com/300';
-                  }}
-                  onLoad={() => console.log('ProfilePage.jsx - Detail view image loaded successfully:', selectedPost.mediaUrls[0])}
-                />
-              ) : (
-                <div className="w-full h-96 bg-gray-200 flex items-center justify-center rounded-lg mb-4">
-                  <Camera className="h-12 w-12 text-gray-400" />
-                </div>
-              )}
-              <div className="flex gap-4 mb-4">
+              <ImageCarousel imageIds={selectedPost.mediaUrls} altPrefix={`Post ${selectedPost.title}`} />
+              <div className="flex gap-4 mb-4 mt-4">
                 <button
                   onClick={() => handleLikePost(selectedPost.id)}
                   className="flex items-center gap-1 text-gray-600 hover:text-red-500"
