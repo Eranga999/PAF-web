@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2, Search, ChevronRight, Smile, Send, MoreHorizontal, Clock, ThumbsUp, Award, Grid, List } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import ImageCarousel from '../components/ImageCarousel';
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
@@ -785,22 +786,16 @@ const HomePage = () => {
                           viewMode === 'list' ? 'flex' : ''
                         }`}
                       >
-                        {post.mediaUrls && post.mediaUrls.length > 0 ? (
-                          <div className={`${viewMode === 'list' ? 'w-72' : 'w-full'} aspect-[4/3] overflow-hidden`}>
-                            <img
-                              src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
-                              alt="Post media"
-                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                              onError={(e) => {
-                                e.target.src = 'https://via.placeholder.com/300';
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <div className={`${viewMode === 'list' ? 'w-72' : 'w-full'} aspect-[4/3] bg-gray-100 flex items-center justify-center`}>
-                            <Camera className="h-12 w-12 text-gray-400" />
-                          </div>
-                        )}
+                       
+                       
+                       
+                       
+                       
+                       <ImageCarousel imageIds={post.mediaUrls} altPrefix={`Post ${post.title}`} />
+
+
+
+
                         <div className="p-6">
                           <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
