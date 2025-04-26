@@ -786,54 +786,50 @@ const HomePage = () => {
                           viewMode === 'list' ? 'flex' : ''
                         }`}
                       >
-                       
-                       
-                       
-                       
-                       
-                       <ImageCarousel imageIds={post.mediaUrls} altPrefix={`Post ${post.title}`} />
-
-
-
-
-                        <div className="p-6">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                              <span className="text-gray-500 text-sm">
-                                {post.userName ? post.userName.charAt(0).toUpperCase() : 'U'}
-                              </span>
+                        <div
+                          onClick={() => handlePostClick(post)}
+                          className="cursor-pointer"
+                        >
+                          <ImageCarousel imageIds={post.mediaUrls} altPrefix={`Post ${post.title}`} />
+                          <div className="p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-gray-500 text-sm">
+                                  {post.userName ? post.userName.charAt(0).toUpperCase() : 'U'}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold">{post.userName || 'Unknown User'}</p>
+                                <p className="text-xs text-gray-500">{post.createdDate}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-semibold">{post.userName || 'Unknown User'}</p>
-                              <p className="text-xs text-gray-500">{post.createdDate}</p>
-                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
+                            {post.description && (
+                              <p className="text-gray-600 text-sm mb-4 line-clamp-2">{post.description}</p>
+                            )}
                           </div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
-                          {post.description && (
-                            <p className="text-gray-600 text-sm mb-4 line-clamp-2">{post.description}</p>
-                          )}
-                          <div className="flex gap-4">
-                            <button
-                              onClick={() => handleLikePost(post.id)}
-                              className="flex items-center gap-1 text-gray-600 hover:text-red-500 transition-colors"
-                            >
-                              <Heart
-                                className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
-                              />
-                              <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
-                            </button>
-                            <button
-                              onClick={() => handlePostClick(post)}
-                              className="flex items-center gap-1 text-gray-600 hover:text-blue-500 transition-colors"
-                            >
-                              <MessageCircle className="h-5 w-5" />
-                              <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
-                            </button>
-                            <button className="flex items-center gap-1 text-gray-600 hover:text-green-500 transition-colors">
-                              <Share2 className="h-5 w-5" />
-                              <span className="text-sm">Share</span>
-                            </button>
-                          </div>
+                        </div>
+                        <div className="p-6 pt-0 flex gap-4">
+                          <button
+                            onClick={() => handleLikePost(post.id)}
+                            className="flex items-center gap-1 text-gray-600 hover:text-red-500 transition-colors"
+                          >
+                            <Heart
+                              className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
+                            />
+                            <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
+                          </button>
+                          <button
+                            onClick={() => handlePostClick(post)}
+                            className="flex items-center gap-1 text-gray-600 hover:text-blue-500 transition-colors"
+                          >
+                            <MessageCircle className="h-5 w-5" />
+                            <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
+                          </button>
+                          <button className="flex items-center gap-1 text-gray-600 hover:text-green-500 transition-colors">
+                            <Share2 className="h-5 w-5" />
+                            <span className="text-sm">Share</span>
+                          </button>
                         </div>
                       </div>
                     );
