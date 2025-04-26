@@ -10,41 +10,70 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
+  // Helper function to check if token is likely valid (not expired)
+  const isTokenValid = (token) => {
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const expiry = payload.exp * 1000; // Convert to milliseconds
+      return Date.now() < expiry;
+    } catch (error) {
+      console.error("Navbar - Error decoding token:", error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const response = await fetch("http://localhost:8080/api/profile", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data);
-            console.log("Navbar - Fetched user:", data);
-            console.log("Navbar - Profile picture URL:", data.profilePictureUrl);
-          } else {
-            console.error("Navbar - Fetch user failed:", response.status);
-            localStorage.removeItem("token");
-            navigate("/login", { replace: true });
-          }
-        } catch (error) {
-          console.error("Navbar - Fetch user error:", error);
-          localStorage.removeItem("token");
+      if (!token || !isTokenValid(token)) {
+        setUser(null);
+        // Only redirect to login if on a protected route and no valid token
+        if (location.pathname !== "/login" && location.pathname !== "/") {
           navigate("/login", { replace: true });
         }
+        return;
+      }
+
+      // Skip fetch if user is already set
+      if (user) return;
+
+      try {
+        const response = await fetch("http://localhost:8080/api/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data);
+          console.log("Navbar - Fetched user:", data);
+          console.log("Navbar - Profile picture URL:", data.profilePictureUrl);
+        } else if (response.status === 401) {
+          // Token is explicitly invalid
+          console.error("Navbar - Unauthorized, clearing token");
+          localStorage.removeItem("token");
+          setUser(null);
+          navigate("/login", { replace: true });
+        } else {
+          // Non-401 errors (e.g., 500, network issues) shouldn't log out
+          console.error("Navbar - Fetch user failed:", response.status);
+        }
+      } catch (error) {
+        // Network or other errors shouldn't log out
+        console.error("Navbar - Fetch user error:", error);
       }
     };
+
     fetchUser();
-  }, [navigate]);
+  }, [location.pathname, navigate]); // Run on route changes
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     setUser(null);
-    navigate("/", { replace: true });
+    setDropdownOpen(false);
+    navigate("/login", { replace: true }); // Redirect to login on logout
     console.log("Navbar - User logged out");
   };
 
