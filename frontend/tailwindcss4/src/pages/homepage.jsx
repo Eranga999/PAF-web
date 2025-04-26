@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2, Search, ChevronRight, Smile, Send, MoreHorizontal, Clock, ThumbsUp, Award, Grid, List } from 'lucide-react';
@@ -280,11 +281,11 @@ const HomePage = () => {
     }
   };
 
-  const handlePostClick = (post) => {
+  const handlePostClick = useCallback((post) => {
     setSelectedPost(post);
     setCommentText('');
     setEditingComment(null);
-  };
+  }, []);
 
   useEffect(() => {
     fetchPosts();
@@ -357,25 +358,11 @@ const HomePage = () => {
                   <p className="text-xs text-gray-500">{selectedPost.createdDate}</p>
                 </div>
               </div>
-              {selectedPost.mediaUrls && selectedPost.mediaUrls.length > 0 ? (
-                <div className="aspect-[16/9] w-full overflow-hidden rounded-lg">
-                  <img
-                    src={`http://localhost:8080/api/images/${selectedPost.mediaUrls[0]}`}
-                    alt="Post media"
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      console.error('HomePage.jsx - Failed to load image in detail view:', selectedPost.mediaUrls[0]);
-                      e.target.src = 'https://via.placeholder.com/300';
-                    }}
-                    onLoad={() => console.log('HomePage.jsx - Detail view image loaded successfully:', selectedPost.mediaUrls[0])}
-                  />
-                </div>
-              ) : (
-                <div className="aspect-[16/9] w-full bg-gray-100 flex items-center justify-center rounded-lg">
-                  <Camera className="h-12 w-12 text-gray-400" />
-                </div>
-              )}
-              <div className="flex gap-4 mb-4">
+              <ImageCarousel
+                imageIds={selectedPost.mediaUrls}
+                altPrefix={`Post ${selectedPost.title}`}
+              />
+              <div className="flex gap-4 mb-4 mt-4">
                 <button
                   onClick={() => handleLikePost(selectedPost.id)}
                   className="flex items-center gap-1 text-gray-600 hover:text-red-500"
@@ -782,20 +769,29 @@ const HomePage = () => {
                       <div
                         key={post.id}
                         ref={isLastElement ? lastPostElementRef : null}
-                        className={`bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden ${
+                        className={`bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer ${
                           viewMode === 'list' ? 'flex' : ''
                         }`}
+                        onClick={() => handlePostClick(post)}
                       >
-                       
-                       
-                       
-                       
-                       
-                       <ImageCarousel imageIds={post.mediaUrls} altPrefix={`Post ${post.title}`} />
-
-
-
-
+                        {post.mediaUrls && post.mediaUrls.length > 0 ? (
+                          <div className="aspect-[16/9] w-full overflow-hidden">
+                            <img
+                              src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
+                              alt={`Post ${post.title}`}
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                              onError={(e) => {
+                                console.error('HomePage.jsx - Failed to load image:', post.mediaUrls[0]);
+                                e.target.src = 'https://via.placeholder.com/300';
+                              }}
+                              onLoad={() => console.log('HomePage.jsx - Post image loaded successfully:', post.mediaUrls[0])}
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-[16/9] w-full bg-gray-100 flex items-center justify-center rounded-t-lg">
+                            <Camera className="h-12 w-12 text-gray-400" />
+                          </div>
+                        )}
                         <div className="p-6">
                           <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
@@ -814,7 +810,10 @@ const HomePage = () => {
                           )}
                           <div className="flex gap-4">
                             <button
-                              onClick={() => handleLikePost(post.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLikePost(post.id);
+                              }}
                               className="flex items-center gap-1 text-gray-600 hover:text-red-500 transition-colors"
                             >
                               <Heart
@@ -823,13 +822,19 @@ const HomePage = () => {
                               <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
                             </button>
                             <button
-                              onClick={() => handlePostClick(post)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePostClick(post);
+                              }}
                               className="flex items-center gap-1 text-gray-600 hover:text-blue-500 transition-colors"
                             >
                               <MessageCircle className="h-5 w-5" />
                               <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
                             </button>
-                            <button className="flex items-center gap-1 text-gray-600 hover:text-green-500 transition-colors">
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1 text-gray-600 hover:text-green-500 transition-colors"
+                            >
                               <Share2 className="h-5 w-5" />
                               <span className="text-sm">Share</span>
                             </button>
