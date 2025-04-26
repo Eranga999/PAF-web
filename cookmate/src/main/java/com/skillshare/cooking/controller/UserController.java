@@ -15,7 +15,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
@@ -106,7 +105,7 @@ public class UserController {
             return ResponseEntity.status(500).body("Failed to upload profile picture: " + e.getMessage());
         }
     }
-    
+
     /**
      * Get all users for exploration
      */
@@ -121,7 +120,7 @@ public class UserController {
             return ResponseEntity.status(500).body(null);
         }
     }
-    
+
     /**
      * Search users by name
      */
@@ -136,7 +135,7 @@ public class UserController {
             return ResponseEntity.status(500).body(null);
         }
     }
-    
+
     /**
      * Get a user's public profile
      */
@@ -145,21 +144,21 @@ public class UserController {
         try {
             String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
             logger.info("Fetching user profile for userId: {} by user: {}", userId, currentUserEmail);
-            
+
             User user = userService.getUserProfile(userId, currentUserEmail);
             boolean isFollowing = userService.isFollowing(currentUserEmail, userId);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("user", user);
             response.put("isFollowing", isFollowing);
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error fetching user profile: {}", e.getMessage());
             return ResponseEntity.status(500).body(null);
         }
     }
-    
+
     /**
      * Follow a user
      */
@@ -168,15 +167,15 @@ public class UserController {
         try {
             String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
             logger.info("User {} is following user {}", currentUserEmail, userId);
-            
-            User updatedUser = userService.followUser(currentUserEmail, userId);
+
+            userService.followUser(currentUserEmail, userId);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             logger.error("Error following user: {}", e.getMessage());
             return ResponseEntity.status(500).body(e.getMessage());
         }
     }
-    
+
     /**
      * Unfollow a user
      */
@@ -185,12 +184,28 @@ public class UserController {
         try {
             String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
             logger.info("User {} is unfollowing user {}", currentUserEmail, userId);
-            
-            User updatedUser = userService.unfollowUser(currentUserEmail, userId);
+
+            userService.unfollowUser(currentUserEmail, userId);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             logger.error("Error unfollowing user: {}", e.getMessage());
             return ResponseEntity.status(500).body(e.getMessage());
+        }
+    }
+
+    /**
+     * Get a user's profile by email
+     */
+    @GetMapping("/profile/email/{email}")
+    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+        try {
+            logger.info("Fetching user profile for email: {}", email);
+            User user = userService.getUserByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            logger.error("Error fetching user by email: {}", e.getMessage());
+            return ResponseEntity.status(404).body(null);
         }
     }
 }
