@@ -2,21 +2,24 @@ package com.skillshare.cooking.controller;
 
 import com.skillshare.cooking.entity.User;
 import com.skillshare.cooking.repository.UserRepository;
+import com.skillshare.cooking.service.AuthService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -24,10 +27,17 @@ public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private final UserRepository userRepository;
+    private final AuthService authService;
     private final String jwtSecret;
 
-    public AuthController(UserRepository userRepository, @Value("${jwt.secret}") String jwtSecret) {
+    @Autowired
+    public AuthController(
+            UserRepository userRepository,
+            AuthService authService,
+            @Value("${jwt.secret}") String jwtSecret
+    ) {
         this.userRepository = userRepository;
+        this.authService = authService;
         this.jwtSecret = jwtSecret;
         if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
             throw new IllegalStateException("JWT secret is not configured");
@@ -90,6 +100,48 @@ public class AuthController {
         } catch (Exception e) {
             logger.error("Error in Google OAuth: {}", e.getMessage());
             return new RedirectView("http://localhost:5173/login?error=true");
+        }
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, String>> register(@RequestBody Map<String, String> request) {
+        logger.info("Processing registration request");
+        try {
+            String email = request.get("email");
+            String password = request.get("password");
+            String name = request.get("name");
+
+            User user = authService.register(email, password, name);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "User registered successfully");
+            response.put("userId", user.getId());
+            logger.info("User registered successfully with email: {}", email);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error during registration: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, String>> login(@RequestBody Map<String, String> request) {
+        logger.info("Processing email/password login request");
+        try {
+            String email = request.get("email");
+            String password = request.get("password");
+
+            String token = authService.login(email, password);
+            Map<String, String> response = new HashMap<>();
+            response.put("token", token);
+            logger.info("User logged in successfully with email: {}", email);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error during login: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 }

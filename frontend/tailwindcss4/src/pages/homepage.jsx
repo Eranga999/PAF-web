@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Plus, X, Camera } from 'lucide-react';
+
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2, Search, ChevronRight, Smile, Send, MoreHorizontal, Clock, ThumbsUp, Award, Grid, List } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import ImageCarousel from '../components/ImageCarousel';
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
@@ -11,7 +13,63 @@ const HomePage = () => {
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const [selectedPost, setSelectedPost] = useState(null);
   const [commentText, setCommentText] = useState('');
+  const [editingComment, setEditingComment] = useState(null);
+  const [editCommentText, setEditCommentText] = useState('');
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('latest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [viewMode, setViewMode] = useState('grid');
+  const postsPerPage = 12;
   const navigate = useNavigate();
+  const location = useLocation();
+  const observer = useRef();
+
+  const lastPostElementRef = useCallback(node => {
+    if (isLoadingPosts) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setCurrentPage(prevPage => prevPage + 1);
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [isLoadingPosts, hasMore]);
+
+  // Filter and sort posts
+  const filteredPosts = useMemo(() => {
+    return posts
+      .filter(post => {
+        const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          post.description?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = filterCategory === 'all' || post.category === filterCategory;
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'latest':
+            return new Date(b.createdDate) - new Date(a.createdDate);
+          case 'oldest':
+            return new Date(a.createdDate) - new Date(b.createdDate);
+          case 'popular':
+            return (b.likedBy?.length || 0) - (a.likedBy?.length || 0);
+          default:
+            return 0;
+        }
+      });
+  }, [posts, searchTerm, filterCategory, sortBy]);
+
+  // Get paginated posts
+  const paginatedPosts = useMemo(() => {
+    const lastPostIndex = currentPage * postsPerPage;
+    return filteredPosts.slice(0, lastPostIndex);
+  }, [filteredPosts, currentPage]);
+
+  useEffect(() => {
+    setHasMore(paginatedPosts.length < filteredPosts.length);
+  }, [paginatedPosts, filteredPosts]);
 
   // Fetch all posts from all users
   const fetchPosts = async () => {
@@ -62,6 +120,7 @@ const HomePage = () => {
       const response = await fetch('http://localhost:8080/api/learning-plans', {
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       });
       if (response.ok) {
@@ -151,17 +210,106 @@ const HomePage = () => {
     }
   };
 
-  const handlePostClick = (post) => {
+  // Edit a comment
+  const handleEditComment = async (postId, commentIndex) => {
+    if (!editCommentText.trim()) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/posts/${postId}/comment/${commentIndex}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: editCommentText }),
+      });
+      if (response.ok) {
+        const updatedPost = await response.json();
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => (post.id === postId ? updatedPost : post))
+        );
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost(updatedPost);
+        }
+        setEditingComment(null);
+        setEditCommentText('');
+      } else {
+        console.error('HomePage.jsx - Failed to edit comment');
+      }
+    } catch (error) {
+      console.error('HomePage.jsx - Error editing comment:', error);
+    }
+  };
+
+  // Delete a comment
+  const handleDeleteComment = async (postId, commentIndex) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/posts/${postId}/comment/${commentIndex}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const updatedPost = await response.json();
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => (post.id === postId ? updatedPost : post))
+        );
+        if (selectedPost && selectedPost.id === postId) {
+          setSelectedPost(updatedPost);
+        }
+      } else {
+        console.error('HomePage.jsx - Failed to delete comment');
+      }
+    } catch (error) {
+      console.error('HomePage.jsx - Error deleting comment:', error);
+    }
+  };
+
+  const handlePostClick = useCallback((post) => {
     setSelectedPost(post);
     setCommentText('');
-  };
+    setEditingComment(null);
+  }, []);
 
   useEffect(() => {
     fetchPosts();
     fetchLearningPlans();
-  }, []);
 
-  // Get current user's email from token (assuming token contains email)
+    // Check if we have a success message in the location state
+    if (location.state?.planCopied) {
+      setShowSuccessMessage(true);
+      // Remove the state after showing the message
+      window.history.replaceState({}, document.title);
+      
+      // Hide the message after 3 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+
+      // Refresh learning plans with a slight delay for better UX
+      setTimeout(() => {
+        fetchLearningPlans();
+      }, 500);
+    }
+  }, [location.state]);
+
+  // Get current user's email from token
   const getCurrentUserEmail = () => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -178,8 +326,13 @@ const HomePage = () => {
   const currentUserEmail = getCurrentUserEmail();
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
       <Navbar />
+      {showSuccessMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-down">
+          Plan copied successfully!
+        </div>
+      )}
       {selectedPost ? (
         // Full-screen post detail view
         <div className="flex flex-col min-h-screen bg-gray-100">
@@ -205,23 +358,11 @@ const HomePage = () => {
                   <p className="text-xs text-gray-500">{selectedPost.createdDate}</p>
                 </div>
               </div>
-              {selectedPost.mediaUrls && selectedPost.mediaUrls.length > 0 ? (
-                <img
-                  src={`http://localhost:8080/api/images/${selectedPost.mediaUrls[0]}`}
-                  alt="Post media"
-                  className="w-full h-96 object-cover rounded-lg mb-4"
-                  onError={(e) => {
-                    console.error('HomePage.jsx - Failed to load image in detail view:', selectedPost.mediaUrls[0]);
-                    e.target.src = 'https://via.placeholder.com/300';
-                  }}
-                  onLoad={() => console.log('HomePage.jsx - Detail view image loaded successfully:', selectedPost.mediaUrls[0])}
-                />
-              ) : (
-                <div className="w-full h-96 bg-gray-200 flex items-center justify-center rounded-lg mb-4">
-                  <Camera className="h-12 w-12 text-gray-400" />
-                </div>
-              )}
-              <div className="flex gap-4 mb-4">
+              <ImageCarousel
+                imageIds={selectedPost.mediaUrls}
+                altPrefix={`Post ${selectedPost.title}`}
+              />
+              <div className="flex gap-4 mb-4 mt-4">
                 <button
                   onClick={() => handleLikePost(selectedPost.id)}
                   className="flex items-center gap-1 text-gray-600 hover:text-red-500"
@@ -289,37 +430,190 @@ const HomePage = () => {
                   ))}
                 </div>
               )}
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Comments</h4>
-                {selectedPost.comments && selectedPost.comments.length > 0 ? (
-                  <div className="space-y-3">
-                    {selectedPost.comments.map((comment, index) => (
-                      <div key={index} className="border-t pt-3">
-                        <p className="text-sm font-semibold">{comment.userEmail}</p>
-                        <p className="text-sm text-gray-600">{comment.content}</p>
-                        <p className="text-xs text-gray-500">{comment.createdDate}</p>
-                      </div>
-                    ))}
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h4 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    Comments
+                    <span className="bg-blue-100 text-blue-600 text-sm px-2 py-0.5 rounded-full">
+                      {selectedPost.comments?.length || 0}
+                    </span>
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <select className="text-sm text-gray-600 border-0 bg-transparent cursor-pointer hover:text-blue-600 transition-colors">
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="popular">Most Popular</option>
+                    </select>
                   </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No comments yet.</p>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="w-full border rounded-md px-3 py-2 text-sm"
-                />
-                <button
-                  onClick={() => handleAddComment(selectedPost.id)}
-                  disabled={!commentText.trim()}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50 text-sm"
-                >
-                  Post
-                </button>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Add Comment Form */}
+                  <div className="p-6 border-b border-gray-100">
+                    <div className="flex gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex-shrink-0 flex items-center justify-center shadow-inner">
+                        <span className="text-white font-semibold text-lg">
+                          {currentUserEmail ? currentUserEmail.charAt(0).toUpperCase() : 'U'}
+                        </span>
+                      </div>
+                      <div className="flex-grow">
+                        <div className="relative bg-gray-50 rounded-2xl p-2 hover:bg-gray-100 transition-colors duration-200">
+                          <textarea
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="Share your thoughts..."
+                            className="w-full px-4 py-3 bg-transparent border-0 focus:ring-0 resize-none text-gray-700 placeholder-gray-400"
+                            rows="2"
+                          />
+                          <div className="flex justify-between items-center px-4 pt-2 border-t border-gray-200">
+                            <div className="flex gap-2">
+                              <button className="p-2 hover:bg-gray-200 rounded-full transition-colors" title="Add emoji">
+                                <Smile className="h-5 w-5 text-gray-500" />
+                              </button>
+                              <button className="p-2 hover:bg-gray-200 rounded-full transition-colors" title="Attach image">
+                                <Camera className="h-5 w-5 text-gray-500" />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => handleAddComment(selectedPost.id)}
+                              disabled={!commentText.trim()}
+                              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                            >
+                              <Send className="h-4 w-4" />
+                              Post
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comments List */}
+                  <div className="divide-y divide-gray-100">
+                    {selectedPost.comments && selectedPost.comments.length > 0 ? (
+                      selectedPost.comments.map((comment, index) => (
+                        <div key={index} className="group hover:bg-gray-50 transition-colors duration-200">
+                          <div className="p-6">
+                            <div className={`flex gap-4 ${editingComment?.commentIndex === index ? 'mb-4' : ''}`}>
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex-shrink-0 flex items-center justify-center shadow-inner">
+                                <span className="text-white font-semibold text-lg">
+                                  {comment.userEmail.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="flex-grow">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-semibold text-gray-900">{comment.userEmail}</p>
+                                      {index === 0 && (
+                                        <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-600 text-xs px-2 py-0.5 rounded-full">
+                                          <Award className="h-3 w-3" />
+                                          Top Commenter
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                      <Clock className="h-3 w-3" />
+                                      {comment.createdDate}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {(comment.userEmail === currentUserEmail || selectedPost.userEmail === currentUserEmail) && (
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                                        {comment.userEmail === currentUserEmail && (
+                                          <button
+                                            onClick={() => {
+                                              setEditingComment({ postId: selectedPost.id, commentIndex: index });
+                                              setEditCommentText(comment.content);
+                                            }}
+                                            className="p-1.5 hover:bg-blue-100 rounded-full transition-colors"
+                                            title="Edit comment"
+                                          >
+                                            <Edit className="h-4 w-4 text-blue-600" />
+                                          </button>
+                                        )}
+                                        <button
+                                          onClick={() => handleDeleteComment(selectedPost.id, index)}
+                                          className="p-1.5 hover:bg-red-100 rounded-full transition-colors"
+                                          title="Delete comment"
+                                        >
+                                          <Trash2 className="h-4 w-4 text-red-600" />
+                                        </button>
+                                      </div>
+                                    )}
+                                    <button className="p-1.5 hover:bg-gray-200 rounded-full transition-colors">
+                                      <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                                    </button>
+                                  </div>
+                                </div>
+                                {editingComment?.commentIndex === index ? (
+                                  <div className="mt-3">
+                                    <textarea
+                                      value={editCommentText}
+                                      onChange={(e) => setEditCommentText(e.target.value)}
+                                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-200"
+                                      rows="3"
+                                    />
+                                    <div className="flex justify-end gap-2 mt-3">
+                                      <button
+                                        onClick={() => setEditingComment(null)}
+                                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => handleEditComment(editingComment.postId, editingComment.commentIndex)}
+                                        disabled={!editCommentText.trim()}
+                                        className="px-6 py-2 text-sm bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 transform hover:scale-105"
+                                      >
+                                        Save Changes
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="mt-2 text-gray-700 leading-relaxed">{comment.content}</p>
+                                    <div className="mt-3 flex items-center gap-4">
+                                      <button className="flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors">
+                                        <ThumbsUp className="h-4 w-4" />
+                                        <span className="text-sm">Like</span>
+                                      </button>
+                                      <button className="flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors">
+                                        <MessageCircle className="h-4 w-4" />
+                                        <span className="text-sm">Reply</span>
+                                      </button>
+                                      <button className="flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors">
+                                        <Share2 className="h-4 w-4" />
+                                        <span className="text-sm">Share</span>
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-12">
+                        <div className="max-w-sm mx-auto text-center">
+                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <MessageCircle className="h-8 w-8 text-blue-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No comments yet</h3>
+                          <p className="text-gray-500 mb-6">Be the first to share your thoughts on this post!</p>
+                          <button
+                            onClick={() => document.querySelector('textarea').focus()}
+                            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 transform hover:scale-105"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            Write a Comment
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </main>
@@ -328,125 +622,244 @@ const HomePage = () => {
       ) : (
         // Main homepage content
         <main className="flex-grow container mx-auto px-4 py-8 mt-16">
-          <h1 className="text-2xl font-bold mb-6">Discover</h1>
+          {/* Hero Section */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Discover Culinary Delights
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Explore recipes, share your cooking journey, and connect with fellow food enthusiasts.
+            </p>
+          </div>
 
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-4">Your Learning Plans</h2>
+          {/* Advanced Search and Filters */}
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-12">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search recipes, ingredients, or users..."
+                  className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex gap-4 items-center">
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="main">Main Dishes</option>
+                  <option value="dessert">Desserts</option>
+                  <option value="appetizer">Appetizers</option>
+                </select>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="latest">Latest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="popular">Most Popular</option>
+                </select>
+                <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                  >
+                    <Grid className="h-5 w-5 text-gray-600" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                  >
+                    <List className="h-5 w-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Learning Plans Section */}
+          <div className="mb-12">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Your Learning Plans</h2>
+              <button
+                onClick={() => navigate('/learningplan')}
+                className="text-blue-600 hover:text-blue-700 flex items-center"
+              >
+                View All <ChevronRight className="ml-1" />
+              </button>
+            </div>
             {isLoadingPlans ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full" />
+              <div className="flex justify-center py-8">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
               </div>
             ) : learningPlans.length > 0 ? (
-              <div className="flex overflow-x-auto space-x-4 pb-4">
-                {learningPlans.map((plan) => (
-                  <div
-                    key={plan.id}
-                    className="bg-white rounded-xl shadow-md p-4 w-64 flex-shrink-0"
-                  >
-                    <h3 className="text-md font-semibold text-gray-900 truncate">{plan.title}</h3>
-                    <p className="text-gray-600 text-sm mt-1 truncate">{plan.description}</p>
-                    <div className="mt-2">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-medium text-gray-700">Progress</span>
-                        <span className="text-xs font-medium text-blue-600">{calculateProgress(plan)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div
-                          className="bg-blue-600 h-1.5 rounded-full"
-                          style={{ width: `${calculateProgress(plan)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <h4 className="text-xs font-medium text-gray-700 mb-1">Topics</h4>
-                      <div className="space-y-1 max-h-20 overflow-y-auto">
-                        {plan.topics && plan.topics.map((topic, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <div className={`h-4 w-4 rounded-full ${topic.completed ? 'bg-green-500' : 'border-2 border-gray-300'}`}></div>
-                            <span className={`text-xs ${topic.completed ? 'line-through text-gray-500' : 'text-gray-800'} truncate`}>
-                              {topic.title}
-                            </span>
+              <div className="relative">
+                <div className="overflow-x-auto pb-4 hide-scrollbar">
+                  <div className="flex gap-6">
+                    {learningPlans.slice(0, 4).map((plan) => (
+                      <div
+                        key={plan.id}
+                        className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 min-w-[300px] flex-shrink-0"
+                      >
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">{plan.title}</h3>
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{plan.description}</p>
+                        <div className="mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-gray-700">Progress</span>
+                            <span className="text-sm font-medium text-blue-600">{plan.progress || 0}%</span>
                           </div>
-                        ))}
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${plan.progress || 0}%` }}
+                            ></div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+                {learningPlans.length > 4 && (
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2">
+                    <button
+                      onClick={() => navigate('/learningplan')}
+                      className="p-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
+                    >
+                      <ChevronRight className="h-6 w-6 text-gray-600" />
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="bg-white rounded-xl shadow-md p-6 text-center">
-                <p className="text-gray-500">No learning plans yet. Create one to get started!</p>
+              <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Plus className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Learning Plans Yet</h3>
+                <p className="text-gray-600 mb-4">Start your culinary journey by creating a learning plan</p>
+                <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                  Create Plan
+                </button>
               </div>
             )}
           </div>
 
-          <div className="space-y-6 mb-20">
-            {isLoadingPosts ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full" />
+          {/* Posts Section */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Posts</h2>
+            {isLoadingPosts && currentPage === 1 ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
               </div>
-            ) : posts.length > 0 ? (
-              posts.map((post) => (
-                <div key={post.id} className="bg-white rounded-2xl shadow-md p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      <span className="text-gray-500 text-sm">
-                        {post.userName ? post.userName.charAt(0).toUpperCase() : 'U'}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">{post.userName || 'Unknown User'}</p>
-                      <p className="text-xs text-gray-500">{post.createdDate}</p>
-                    </div>
-                  </div>
-                  {post.mediaUrls && post.mediaUrls.length > 0 ? (
-                    <img
-                      src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
-                      alt="Post media"
-                      className="w-full h-64 object-cover rounded-lg mb-3 cursor-pointer"
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/300';
-                      }}
-                      onClick={() => handlePostClick(post)}
-                    />
-                  ) : (
-                    <div
-                      className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg mb-3 cursor-pointer"
-                      onClick={() => handlePostClick(post)}
-                    >
-                      <Camera className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                  <div className="mt-2">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{post.title || 'Untitled Post'}</p>
-                  </div>
-                  <div className="flex gap-4 mt-1">
-                    <button
-                      onClick={() => handleLikePost(post.id)}
-                      className="flex items-center gap-1 text-gray-600 hover:text-red-500"
-                    >
-                      <Heart
-                        className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
-                      />
-                      <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
-                    </button>
-                    <button
-                      onClick={() => handlePostClick(post)}
-                      className="flex items-center gap-1 text-gray-600"
-                    >
-                      <MessageCircle className="h-5 w-5" />
-                      <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
-                    </button>
-                    <button className="flex items-center gap-1 text-gray-600">
-                      <Share2 className="h-5 w-5" />
-                      <span className="text-sm">33</span>
-                    </button>
-                  </div>
+            ) : paginatedPosts.length > 0 ? (
+              <>
+                <div className={viewMode === 'grid' ? 
+                  'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 
+                  'space-y-6'
+                }>
+                  {paginatedPosts.map((post, index) => {
+                    const isLastElement = index === paginatedPosts.length - 1;
+                    return (
+                      <div
+                        key={post.id}
+                        ref={isLastElement ? lastPostElementRef : null}
+                        className={`bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer ${
+                          viewMode === 'list' ? 'flex' : ''
+                        }`}
+                        onClick={() => handlePostClick(post)}
+                      >
+                        {post.mediaUrls && post.mediaUrls.length > 0 ? (
+                          <div className="aspect-[16/9] w-full overflow-hidden">
+                            <img
+                              src={`http://localhost:8080/api/images/${post.mediaUrls[0]}`}
+                              alt={`Post ${post.title}`}
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                              onError={(e) => {
+                                console.error('HomePage.jsx - Failed to load image:', post.mediaUrls[0]);
+                                e.target.src = 'https://via.placeholder.com/300';
+                              }}
+                              onLoad={() => console.log('HomePage.jsx - Post image loaded successfully:', post.mediaUrls[0])}
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-[16/9] w-full bg-gray-100 flex items-center justify-center rounded-t-lg">
+                            <Camera className="h-12 w-12 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="p-6">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-500 text-sm">
+                                {post.userName ? post.userName.charAt(0).toUpperCase() : 'U'}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold">{post.userName || 'Unknown User'}</p>
+                              <p className="text-xs text-gray-500">{post.createdDate}</p>
+                            </div>
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
+                          {post.description && (
+                            <p className="text-gray-600 text-sm mb-4 line-clamp-2">{post.description}</p>
+                          )}
+                          <div className="flex gap-4">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLikePost(post.id);
+                              }}
+                              className="flex items-center gap-1 text-gray-600 hover:text-red-500 transition-colors"
+                            >
+                              <Heart
+                                className={`h-5 w-5 ${post.likedBy && post.likedBy.includes(currentUserEmail) ? 'fill-red-500 text-red-500' : ''}`}
+                              />
+                              <span className="text-sm">{post.likedBy ? post.likedBy.length : 0}</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePostClick(post);
+                              }}
+                              className="flex items-center gap-1 text-gray-600 hover:text-blue-500 transition-colors"
+                            >
+                              <MessageCircle className="h-5 w-5" />
+                              <span className="text-sm">{post.comments ? post.comments.length : 0}</span>
+                            </button>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1 text-gray-600 hover:text-green-500 transition-colors"
+                            >
+                              <Share2 className="h-5 w-5" />
+                              <span className="text-sm">Share</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))
+                {isLoadingPosts && (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="bg-white rounded-2xl shadow-md p-6 text-center">
-                <p className="text-gray-500">No posts yet. Be the first to share something!</p>
+              <div className="bg-white rounded-xl shadow-md p-8 text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Camera className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Posts Yet</h3>
+                <p className="text-gray-600 mb-4">Be the first to share your culinary creations!</p>
+                <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                  Create Post
+                </button>
               </div>
             )}
           </div>
@@ -454,7 +867,7 @@ const HomePage = () => {
           {/* Floating Action Button */}
           <button
             onClick={() => navigate('/profile')}
-            className="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 z-50"
+            className="fixed bottom-8 right-8 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors hover:scale-110 transform duration-300 z-50"
           >
             <Plus className="h-6 w-6" />
           </button>

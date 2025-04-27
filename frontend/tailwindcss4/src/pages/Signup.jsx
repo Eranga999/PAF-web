@@ -1,59 +1,29 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { FcGoogle } from "react-icons/fc";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-const Login = () => {
+const Signup = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    console.log("Login.jsx - Location:", location.pathname, location.search);
-    const params = new URLSearchParams(location.search);
-    const token = params.get("token");
-    const error = params.get("error");
-    console.log("Login.jsx - Token:", token);
-    console.log("Login.jsx - Error:", error);
-
-    if (token) {
-      console.log("Login.jsx - Saving token:", token.substring(0, 10) + "...");
-      localStorage.setItem("token", token);
-      console.log("Login.jsx - Navigating to /");
-      navigate("/", { replace: true });
-    } else if (error) {
-      console.error("Login.jsx - Error:", error);
-      localStorage.removeItem("token");
-      navigate("/login", { replace: true });
-    } else {
-      console.log("Login.jsx - No token, staying on /login");
-      localStorage.removeItem("token");
-    }
-  }, [location, navigate]);
-
-  const handleGoogleLogin = () => {
-    console.log("Login.jsx - Starting Google OAuth");
-    window.location.href = "http://localhost:8080/oauth2/authorization/google";
-  };
-
-  const handleEmailLogin = async (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:8080/auth/login", {
+      const response = await fetch("http://localhost:8080/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name }),
       });
 
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem("token", data.token);
-        navigate("/", { replace: true });
+        navigate("/login"); // Redirect to login after successful signup
       } else {
-        setError(data.message || "Login failed");
+        setError(data.message || "Signup failed");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
@@ -70,8 +40,18 @@ const Login = () => {
             </span>
           </div>
         </div>
-        <h2 className="text-white text-3xl font-bold text-center mb-6">Welcome to Cookmate</h2>
-        <div onSubmit={handleEmailLogin}>
+        <h2 className="text-white text-3xl font-bold text-center mb-6">Sign Up for Cookmate</h2>
+        <div onSubmit={handleSignup}>
+          <div className="mb-5">
+            <input
+              type="text"
+              placeholder="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 placeholder-gray-400"
+              required
+            />
+          </div>
           <div className="mb-5">
             <input
               type="email"
@@ -93,35 +73,19 @@ const Login = () => {
             />
           </div>
           <button
-            onClick={handleEmailLogin}
+            onClick={handleSignup}
             className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors duration-300 transform hover:scale-105"
           >
-            Login
+            Sign Up
           </button>
         </div>
         {error && (
           <p className="text-red-400 text-center mt-3 animate-pulse">{error}</p>
         )}
-        <p className="text-white text-center mt-4">
-          <a href="/forgot-password" className="text-blue-400 hover:text-blue-300 transition-colors duration-200">
-            Forgot password?
-          </a>
-        </p>
-        <div className="mt-6">
-          <p className="text-white text-center mb-3">Or login with</p>
-          <div className="flex justify-center">
-            <button
-              onClick={handleGoogleLogin}
-              className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-300 shadow-md"
-            >
-              <FcGoogle className="w-7 h-7" />
-            </button>
-          </div>
-        </div>
         <p className="text-white text-center mt-6">
-          Don't have an account?{" "}
-          <a href="/signup" className="text-blue-400 hover:text-blue-300 transition-colors duration-200">
-            Sign Up
+          Already have an account?{" "}
+          <a href="/login" className="text-blue-400 hover:text-blue-300 transition-colors duration-200">
+            Login
           </a>
         </p>
       </div>
@@ -144,4 +108,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Signup;
