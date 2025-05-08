@@ -200,11 +200,12 @@ const UserProfilePage = () => {
             <div className="flex justify-between items-end px-6 -mt-16">
               <div className="h-28 w-28 rounded-full overflow-hidden border-4 border-white bg-white">
                 <img
-                  src={user.profilePictureUrl || "https://via.placeholder.com/150"}
+                  src={user.profilePictureUrl || ("https://ui-avatars.com/api/?name=" + encodeURIComponent(user.name || "User"))}
                   alt={user.name}
                   className="h-full w-full object-cover"
                   onError={(e) => {
-                    e.target.src = "https://via.placeholder.com/150";
+                    e.target.onerror = null;
+                    e.target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.name || "User");
                   }}
                 />
               </div>

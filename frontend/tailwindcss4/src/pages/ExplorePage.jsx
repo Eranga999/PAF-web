@@ -275,11 +275,12 @@ const ExplorePage = () => {
                   <div className="flex items-center mb-3">
                     <div className="h-14 w-14 rounded-full overflow-hidden bg-gray-200 mr-3">
                       <img 
-                        src={user.profilePictureUrl || "https://via.placeholder.com/150"} 
+                        src={user.profilePictureUrl || ("https://ui-avatars.com/api/?name=" + encodeURIComponent(user.name || "User"))} 
                         alt={user.name}
                         className="h-full w-full object-cover"
                         onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/150";
+                          e.target.onerror = null;
+                          e.target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.name || "User");
                         }}
                       />
                     </div>
