@@ -12,6 +12,8 @@ import Homepage from "./pages/homepage";
 import ExplorePage from "./pages/ExplorePage";
 import UserProfilePage from "./pages/UserProfilePage";
 import Signup from "./pages/Signup";
+import LearningPlanDetailPage from "./pages/learningplan/LearningPlanDetailPage";
+
 function App() {
   return (
     <Routes>
@@ -25,6 +27,7 @@ function App() {
       <Route path="/explore" element={<ExplorePage />} />
       <Route path="/users/:userId" element={<UserProfilePage />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/learning-journey/:id" element={<LearningPlanDetailPage />} />
     </Routes>
   );
 }
