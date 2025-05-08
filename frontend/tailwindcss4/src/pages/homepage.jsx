@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Plus, X, Camera, Edit, Trash2, Search, ChevronRight, Smile, Send, MoreHorizontal, Clock, ThumbsUp, Award, Grid, List } from 'lucide-react';
@@ -84,6 +83,9 @@ const HomePage = () => {
         const data = await response.json();
         const postsWithNames = await Promise.all(
           data.map(async (post) => {
+            if (!post.userEmail) {
+              return { ...post, userName: 'Unknown User' };
+            }
             try {
               const userResponse = await fetch(`http://localhost:8080/api/profile/email/${post.userEmail}`, {
                 headers: {
@@ -705,22 +707,26 @@ const HomePage = () => {
                     {learningPlans.slice(0, 4).map((plan) => (
                       <div
                         key={plan.id}
-                        className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 min-w-[300px] flex-shrink-0"
+                        className="bg-white rounded-2xl shadow-lg p-8 mb-6 min-w-[320px] max-w-md flex-shrink-0 flex flex-col justify-between"
                       >
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">{plan.title}</h3>
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{plan.description}</p>
-                        <div className="mb-4">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-gray-700">Progress</span>
-                            <span className="text-sm font-medium text-blue-600">{plan.progress || 0}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
-                              style={{ width: `${plan.progress || 0}%` }}
-                            ></div>
-                          </div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.title}</h3>
+                        <p className="text-gray-600 mb-4 line-clamp-2">{plan.description}</p>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">Progress</span>
+                          <span className="text-sm font-semibold text-blue-600">{plan.progress || 0}%</span>
                         </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                          <div
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500"
+                            style={{ width: `${plan.progress || 0}%` }}
+                          ></div>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/learning-journey/${plan.id}`)}
+                          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                          View Details
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -781,8 +787,12 @@ const HomePage = () => {
                               alt={`Post ${post.title}`}
                               className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
-                                console.error('HomePage.jsx - Failed to load image:', post.mediaUrls[0]);
-                                e.target.src = 'https://via.placeholder.com/300';
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                const fallbackDiv = document.createElement('div');
+                                fallbackDiv.className = 'w-full h-full flex items-center justify-center bg-gray-100';
+                                fallbackDiv.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' class='h-12 w-12 text-gray-400' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7l9 6 9-6' /></svg>`;
+                                e.target.parentNode.appendChild(fallbackDiv);
                               }}
                               onLoad={() => console.log('HomePage.jsx - Post image loaded successfully:', post.mediaUrls[0])}
                             />
