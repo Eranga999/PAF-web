@@ -26,6 +26,17 @@ const HomePage = () => {
   const location = useLocation();
   const observer = useRef();
 
+  const availableTags = [
+    "Vegan", "Quick", "Spicy", "Healthy", "Gluten-Free", "Dessert", "Breakfast", "Dinner"
+  ];
+  const [selectedTags, setSelectedTags] = useState([]);
+
+  const toggleTag = (tag) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
   const lastPostElementRef = useCallback(node => {
     if (isLoadingPosts) return;
     if (observer.current) observer.current.disconnect();
@@ -39,26 +50,31 @@ const HomePage = () => {
 
   // Filter and sort posts
   const filteredPosts = useMemo(() => {
-    return posts
+    let postsToFilter = posts
       .filter(post => {
         const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           post.description?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = filterCategory === 'all' || post.category === filterCategory;
         return matchesSearch && matchesCategory;
-      })
-      .sort((a, b) => {
-        switch (sortBy) {
-          case 'latest':
-            return new Date(b.createdDate) - new Date(a.createdDate);
-          case 'oldest':
-            return new Date(a.createdDate) - new Date(b.createdDate);
-          case 'popular':
-            return (b.likedBy?.length || 0) - (a.likedBy?.length || 0);
-          default:
-            return 0;
-        }
       });
-  }, [posts, searchTerm, filterCategory, sortBy]);
+    if (selectedTags.length > 0) {
+      postsToFilter = postsToFilter.filter(post =>
+        post.tags && selectedTags.every(tag => post.tags.includes(tag))
+      );
+    }
+    return postsToFilter.sort((a, b) => {
+      switch (sortBy) {
+        case 'latest':
+          return new Date(b.createdDate) - new Date(a.createdDate);
+        case 'oldest':
+          return new Date(a.createdDate) - new Date(b.createdDate);
+        case 'popular':
+          return (b.likedBy?.length || 0) - (a.likedBy?.length || 0);
+        default:
+          return 0;
+      }
+    });
+  }, [posts, searchTerm, filterCategory, sortBy, selectedTags]);
 
   // Get paginated posts
   const paginatedPosts = useMemo(() => {
@@ -326,6 +342,27 @@ const HomePage = () => {
   };
 
   const currentUserEmail = getCurrentUserEmail();
+
+  // Calculate tag frequencies from all posts
+  const tagFrequency = {};
+  posts.forEach(post => {
+    if (post.tags && Array.isArray(post.tags)) {
+      post.tags.forEach(tag => {
+        tagFrequency[tag] = (tagFrequency[tag] || 0) + 1;
+      });
+    }
+  });
+  const trendingTags = Object.entries(tagFrequency)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([tag]) => tag);
+
+  // Get all unique tags from posts
+  const allTags = Array.from(
+    new Set(
+      posts.flatMap(post => (post.tags && Array.isArray(post.tags) ? post.tags : []))
+    )
+  );
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
@@ -765,6 +802,49 @@ const HomePage = () => {
               </div>
             ) : paginatedPosts.length > 0 ? (
               <>
+                {trendingTags.length > 0 && (
+                  <div className="mb-2">
+                    <span className="font-semibold text-gray-700 mr-2">Trending Hashtags:</span>
+                    {trendingTags.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className={`px-3 py-1 rounded-full border text-sm mr-2 mb-1 transition ${
+                          selectedTags.includes(tag)
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-blue-600 border-blue-300 hover:bg-blue-50"
+                        }`}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="mb-6">
+                  <div className="flex flex-wrap gap-2">
+                    {allTags.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className={`px-4 py-1 rounded-full border transition ${
+                          selectedTags.includes(tag)
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-blue-600 border-blue-300 hover:bg-blue-50"
+                        }`}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                    {selectedTags.length > 0 && (
+                      <button
+                        onClick={() => setSelectedTags([])}
+                        className="ml-2 px-3 py-1 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <div className={viewMode === 'grid' ? 
                   'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 
                   'space-y-6'
