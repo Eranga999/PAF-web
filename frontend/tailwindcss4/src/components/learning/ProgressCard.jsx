@@ -127,6 +127,9 @@ const ProgressCard = ({ onProgressUpdate }) => {
     }
   };
 
+  const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
+  const selectedPlanProgress = selectedPlan ? selectedPlan.progress : 0;
+
   return (
     <div>
       <button
@@ -195,6 +198,12 @@ const ProgressCard = ({ onProgressUpdate }) => {
                   ))}
                 </select>
               </div>
+
+              {selectedPlanId && (
+                <div className="text-blue-600 text-sm mt-2">
+                  Progress for this plan: {selectedPlanProgress}%
+                </div>
+              )}
 
               {progressUpdates.length > 0 ? (
                 <div className="mt-4">
