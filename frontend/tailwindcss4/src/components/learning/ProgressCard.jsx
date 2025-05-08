@@ -3,6 +3,7 @@ import { Trophy } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { getAuthHeaders } from "../../utils/auth";
 
 const progressSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -27,18 +28,10 @@ const ProgressCard = ({ onProgressUpdate }) => {
 
   useEffect(() => {
     const fetchPlans = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Authentication required to fetch learning plans.");
-        return;
-      }
-
       try {
         const response = await fetch("http://localhost:8080/api/learning-plans", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+          credentials: "include",
+          headers: getAuthHeaders(),
         });
         if (!response.ok) {
           if (response.status === 401) {
@@ -67,25 +60,19 @@ const ProgressCard = ({ onProgressUpdate }) => {
   useEffect(() => {
     if (selectedPlanId) {
       const fetchProgressUpdates = async () => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          alert("Authentication required to fetch progress updates.");
-          return;
-        }
-
         try {
-          const response = await fetch(`http://localhost:8080/api/progress-updates/plan/${selectedPlanId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
+          const response = await fetch(`http://localhost:8080/api/progress-updates/${selectedPlanId}`, {
+            credentials: "include",
+            headers: getAuthHeaders(),
           });
           if (!response.ok) {
-            if (response.status === 401) {
-              alert("Your session has expired. Please try again or contact support.");
+            if (response.status === 404) {
+              setProgressUpdates([]);
               return;
             }
-            throw new Error("Failed to fetch progress updates");
+            const errorText = await response.text();
+            alert(`Error fetching progress updates: ${errorText}`);
+            return;
           }
           const data = await response.json();
           setProgressUpdates(data);
@@ -101,12 +88,6 @@ const ProgressCard = ({ onProgressUpdate }) => {
   }, [selectedPlanId]);
 
   const onSubmit = async (data) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Authentication required to share progress.");
-      return;
-    }
-
     try {
       const selectedPlan = plans.find((plan) => plan.id === data.planId);
       const progressPercentage = selectedPlan
@@ -117,10 +98,8 @@ const ProgressCard = ({ onProgressUpdate }) => {
 
       const response = await fetch("http://localhost:8080/api/progress-updates", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ...data,
           planId: data.planId || undefined,
@@ -147,6 +126,9 @@ const ProgressCard = ({ onProgressUpdate }) => {
       alert(`Error creating progress update: ${error.message}`);
     }
   };
+
+  const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
+  const selectedPlanProgress = selectedPlan ? selectedPlan.progress : 0;
 
   return (
     <div>
@@ -217,7 +199,13 @@ const ProgressCard = ({ onProgressUpdate }) => {
                 </select>
               </div>
 
-              {progressUpdates.length > 0 && (
+              {selectedPlanId && (
+                <div className="text-blue-600 text-sm mt-2">
+                  Progress for this plan: {selectedPlanProgress}%
+                </div>
+              )}
+
+              {progressUpdates.length > 0 ? (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium mb-2">Recent Progress Updates</h4>
                   <ul className="space-y-2">
@@ -230,6 +218,8 @@ const ProgressCard = ({ onProgressUpdate }) => {
                     ))}
                   </ul>
                 </div>
+              ) : (
+                <div className="text-gray-500 text-sm mt-2">No progress updates yet for this plan.</div>
               )}
 
               <div className="flex justify-end gap-2">
