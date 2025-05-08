@@ -6,6 +6,7 @@ import ProgressCard from "../../components/learning/ProgressCard.jsx";
 import Navbar from "../../components/Navbar.jsx";
 import Footer from "../../components/Footer.jsx";
 import { motion } from 'framer-motion';
+import { getAuthHeaders } from "../../utils/auth";
 
 class ErrorBoundary extends Component {
   state = { hasError: false };
@@ -45,18 +46,6 @@ const CulinaryJourneyPage = () => {
     });
   };
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      handleAuthError();
-      return null;
-    }
-    return {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
-  };
-
   const filteredPlans = useMemo(() => {
     const plans = activeTab === 'my-plans' ? learningPlans : [];
     return plans
@@ -94,11 +83,11 @@ const CulinaryJourneyPage = () => {
       setIsLoadingPlans(true);
       setIsLoadingProgress(true);
 
-      const headers = getAuthHeaders();
-      if (!headers) return;
-
       try {
-        const plansResponse = await fetch("http://localhost:8080/api/learning-plans", { headers });
+        const plansResponse = await fetch("http://localhost:8080/api/learning-plans", { 
+          credentials: "include",
+          headers: getAuthHeaders(),
+        });
         if (!plansResponse.ok) {
           if (plansResponse.status === 401) {
             handleAuthError();
@@ -109,17 +98,21 @@ const CulinaryJourneyPage = () => {
         const plansData = await plansResponse.json();
         setLearningPlans(plansData);
 
-        const progressResponse = await fetch("http://localhost:8080/api/progress-updates/user", { headers });
+        const progressResponse = await fetch("http://localhost:8080/api/progress-updates/user", {
+          credentials: "include",
+          headers: getAuthHeaders(),
+        });
         if (!progressResponse.ok) {
-          if (progressResponse.status === 401) {
-            handleAuthError();
+          if (progressResponse.status === 404) {
+            setProgressUpdates([]); // No updates, but not an error
             return;
           }
-          setProgressUpdates([]);
-        } else {
-          const progressData = await progressResponse.json();
-          setProgressUpdates(progressData);
+          const errorText = await progressResponse.text();
+          alert(`Error fetching progress updates: ${errorText}`);
+          return;
         }
+        const progressData = await progressResponse.json();
+        setProgressUpdates(progressData);
       } catch (error) {
         console.error("Error fetching data:", error);
         alert(`Error fetching data: ${error.message}`);
@@ -133,11 +126,13 @@ const CulinaryJourneyPage = () => {
   }, [navigate]);
 
   const handleProgressUpdate = async () => {
-    const headers = getAuthHeaders();
-    if (!headers) return;
-
+    setIsLoadingPlans(true);
+    setIsLoadingProgress(true);
     try {
-      const plansResponse = await fetch("http://localhost:8080/api/learning-plans", { headers });
+      const plansResponse = await fetch("http://localhost:8080/api/learning-plans", { 
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
       if (plansResponse.ok) {
         const plansData = await plansResponse.json();
         setLearningPlans(plansData);
@@ -149,7 +144,10 @@ const CulinaryJourneyPage = () => {
         throw new Error("Failed to fetch learning plans");
       }
 
-      const progressResponse = await fetch("http://localhost:8080/api/progress-updates/user", { headers });
+      const progressResponse = await fetch("http://localhost:8080/api/progress-updates/user", { 
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
       if (progressResponse.ok) {
         const progressData = await progressResponse.json();
         setProgressUpdates(progressData);
@@ -163,18 +161,19 @@ const CulinaryJourneyPage = () => {
     } catch (error) {
       console.error("Error refreshing data:", error);
       alert(`Error refreshing data: ${error.message}`);
+    } finally {
+      setIsLoadingPlans(false);
+      setIsLoadingProgress(false);
     }
   };
 
   const handleDeleteProgressUpdate = async (progressId) => {
     if (window.confirm("Are you sure you want to delete this progress update?")) {
-      const headers = getAuthHeaders();
-      if (!headers) return;
-
       try {
         const response = await fetch(`http://localhost:8080/api/progress-updates/${progressId}`, {
           method: "DELETE",
-          headers,
+          credentials: "include",
+          headers: getAuthHeaders(),
         });
         if (response.ok) {
           setProgressUpdates(progressUpdates.filter((progress) => progress.id !== progressId));
