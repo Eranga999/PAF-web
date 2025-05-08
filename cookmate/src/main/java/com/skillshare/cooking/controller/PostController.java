@@ -2,8 +2,10 @@ package com.skillshare.cooking.controller;
 
 import com.skillshare.cooking.entity.Comment;
 import com.skillshare.cooking.entity.Image;
+import com.skillshare.cooking.entity.Notification;
 import com.skillshare.cooking.entity.Post;
 import com.skillshare.cooking.repository.ImageRepository;
+import com.skillshare.cooking.repository.NotificationRepository;
 import com.skillshare.cooking.service.PostService;
 import org.bson.types.Binary;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,12 +33,15 @@ public class PostController {
     @Autowired
     private ImageRepository imageRepository;
 
-    @SuppressWarnings("unused")
+    @Autowired
+    private NotificationRepository notificationRepository;
+
     private final String jwtSecret;
 
-    public PostController(PostService postService, ImageRepository imageRepository, @Value("${jwt.secret}") String jwtSecret) {
+    public PostController(PostService postService, ImageRepository imageRepository, NotificationRepository notificationRepository, @Value("${jwt.secret}") String jwtSecret) {
         this.postService = postService;
         this.imageRepository = imageRepository;
+        this.notificationRepository = notificationRepository;
         this.jwtSecret = jwtSecret;
     }
 
@@ -255,6 +260,50 @@ public class PostController {
             return ResponseEntity.status(403).body(null);
         } catch (Exception e) {
             System.err.println("Error deleting comment: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @GetMapping("/notifications")
+    public ResponseEntity<List<Notification>> getUserNotifications() {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            List<Notification> notifications = notificationRepository.findByUserEmailOrderByCreatedDateDesc(email);
+            System.out.println("Returning " + notifications.size() + " notifications for user: " + email);
+            return ResponseEntity.ok(notifications);
+        } catch (Exception e) {
+            System.err.println("Error fetching notifications: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @PutMapping("/notifications/{id}/read")
+    public ResponseEntity<Notification> markNotificationAsRead(@PathVariable String id) {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null) {
+                System.err.println("No authenticated user found");
+                return ResponseEntity.status(401).body(null);
+            }
+            Optional<Notification> notificationOptional = notificationRepository.findById(id);
+            if (notificationOptional.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            Notification notification = notificationOptional.get();
+            if (!notification.getUserEmail().equals(email)) {
+                return ResponseEntity.status(403).body(null);
+            }
+            notification.setRead(true);
+            Notification updatedNotification = notificationRepository.save(notification);
+            return ResponseEntity.ok(updatedNotification);
+        } catch (Exception e) {
+            System.err.println("Error marking notification as read: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(500).body(null);
         }
     }

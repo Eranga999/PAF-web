@@ -1,11 +1,14 @@
 package com.skillshare.cooking.service;
 
 import com.skillshare.cooking.entity.Comment;
+import com.skillshare.cooking.entity.Notification;
 import com.skillshare.cooking.entity.Post;
+import com.skillshare.cooking.repository.NotificationRepository;
 import com.skillshare.cooking.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +18,68 @@ public class PostService {
     @Autowired
     private PostRepository postRepository;
 
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    public Post likePost(String postId, String email) {
+        Optional<Post> postOptional = postRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            throw new RuntimeException("Post not found with id: " + postId);
+        }
+        Post post = postOptional.get();
+        List<String> likedBy = post.getLikedBy();
+        if (!likedBy.contains(email)) {
+            likedBy.add(email);
+            post.setLikedBy(likedBy);
+            postRepository.save(post);
+
+            // Create notification for post owner (if not liking own post)
+            if (!post.getUserEmail().equals(email)) {
+                Notification notification = new Notification(
+                        post.getUserEmail(),
+                        "LIKE",
+                        postId,
+                        email,
+                        email + " liked your post: " + post.getTitle(),
+                        new Date().toString()
+                );
+                notificationRepository.save(notification);
+            }
+        } else {
+            likedBy.remove(email);
+            post.setLikedBy(likedBy);
+            postRepository.save(post);
+        }
+        return post;
+    }
+
+    public Post addComment(String postId, Comment comment) {
+        Optional<Post> postOptional = postRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            throw new RuntimeException("Post not found with id: " + postId);
+        }
+        Post post = postOptional.get();
+        List<Comment> comments = post.getComments();
+        comments.add(comment);
+        post.setComments(comments);
+        postRepository.save(post);
+
+        // Create notification for post owner (if not commenting on own post)
+        if (!post.getUserEmail().equals(comment.getUserEmail())) {
+            Notification notification = new Notification(
+                    post.getUserEmail(),
+                    "COMMENT",
+                    postId,
+                    comment.getUserEmail(),
+                    comment.getUserEmail() + " commented on your post: " + post.getTitle(),
+                    new Date().toString()
+            );
+            notificationRepository.save(notification);
+        }
+        return post;
+    }
+
+    // Other existing methods should remain unchanged
     public Post createPost(Post post) {
         return postRepository.save(post);
     }
@@ -28,18 +93,17 @@ public class PostService {
     }
 
     public Post updatePost(String id, Post post) {
-        Post existingPost = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
+        Optional<Post> postOptional = postRepository.findById(id);
+        if (postOptional.isEmpty()) {
+            throw new RuntimeException("Post not found with id: " + id);
+        }
+        Post existingPost = postOptional.get();
         existingPost.setTitle(post.getTitle());
         existingPost.setDescription(post.getDescription());
         existingPost.setIngredients(post.getIngredients());
         existingPost.setInstructions(post.getInstructions());
         existingPost.setMediaUrls(post.getMediaUrls());
         existingPost.setTags(post.getTags());
-        existingPost.setCreatedDate(post.getCreatedDate());
-        existingPost.setUserEmail(post.getUserEmail());
-        existingPost.setLikedBy(post.getLikedBy());
-        existingPost.setComments(post.getComments());
         return postRepository.save(existingPost);
     }
 
@@ -51,56 +115,39 @@ public class PostService {
         return postRepository.findByUserEmail(userEmail);
     }
 
-    public Post likePost(String id, String userEmail) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
-        List<String> likedBy = post.getLikedBy();
-        if (likedBy.contains(userEmail)) {
-            // User already liked, so unlike by removing their email
-            likedBy.remove(userEmail);
-        } else {
-            // User hasn't liked, so add their email
-            likedBy.add(userEmail);
-        }
-        post.setLikedBy(likedBy);
-        return postRepository.save(post);
-    }
-
-    public Post addComment(String id, Comment comment) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + id));
-        post.getComments().add(comment);
-        return postRepository.save(post);
-    }
-
     public Post editComment(String postId, int commentIndex, Comment updatedComment, String userEmail) throws IllegalAccessException {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        Optional<Post> postOptional = postRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            throw new RuntimeException("Post not found with id: " + postId);
+        }
+        Post post = postOptional.get();
         List<Comment> comments = post.getComments();
         if (commentIndex < 0 || commentIndex >= comments.size()) {
-            throw new RuntimeException("Comment not found at index: " + commentIndex);
+            throw new RuntimeException("Invalid comment index");
         }
         Comment existingComment = comments.get(commentIndex);
         if (!existingComment.getUserEmail().equals(userEmail)) {
-            throw new IllegalAccessException("User is not authorized to edit this comment");
+            throw new IllegalAccessException("You can only edit your own comments");
         }
-        updatedComment.setUserEmail(userEmail);
-        updatedComment.setCreatedDate(existingComment.getCreatedDate()); // Preserve original date
-        comments.set(commentIndex, updatedComment);
+        existingComment.setContent(updatedComment.getContent());
+        existingComment.setCreatedDate(new Date().toString());
         post.setComments(comments);
         return postRepository.save(post);
     }
 
     public Post deleteComment(String postId, int commentIndex, String userEmail) throws IllegalAccessException {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found with id: " + postId));
+        Optional<Post> postOptional = postRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            throw new RuntimeException("Post not found with id: " + postId);
+        }
+        Post post = postOptional.get();
         List<Comment> comments = post.getComments();
         if (commentIndex < 0 || commentIndex >= comments.size()) {
-            throw new RuntimeException("Comment not found at index: " + commentIndex);
+            throw new RuntimeException("Invalid comment index");
         }
         Comment comment = comments.get(commentIndex);
-        if (!comment.getUserEmail().equals(userEmail) && !post.getUserEmail().equals(userEmail)) {
-            throw new IllegalAccessException("User is not authorized to delete this comment");
+        if (!comment.getUserEmail().equals(userEmail)) {
+            throw new IllegalAccessException("You can only delete your own comments");
         }
         comments.remove(commentIndex);
         post.setComments(comments);
