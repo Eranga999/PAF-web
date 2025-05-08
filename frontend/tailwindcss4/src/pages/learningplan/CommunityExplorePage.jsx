@@ -172,9 +172,21 @@ const CommunityExplorePage = () => {
                           <div className="flex items-center">
                             <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
                               {u.avatarUrl ? (
-                                <img src={u.avatarUrl} alt={u.name || u.username} className="rounded-full" />
+                                <img 
+                                  src={u.avatarUrl} 
+                                  alt={u.name || u.username} 
+                                  className="rounded-full"
+                                  onError={e => {
+                                    e.target.onerror = null;
+                                    e.target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(u.name || u.username);
+                                  }}
+                                />
                               ) : (
-                                <span className="text-gray-500">{u.name?.[0] || u.username[0]}</span>
+                                <img 
+                                  src={"https://ui-avatars.com/api/?name=" + encodeURIComponent(u.name || u.username)} 
+                                  alt={u.name || u.username} 
+                                  className="rounded-full"
+                                />
                               )}
                             </div>
                             <div className="ml-4">
