@@ -628,7 +628,7 @@ const ProfilePage = () => {
                     alt="Profile"
                     className="w-24 h-24 rounded-full object-cover border-2 border-gray-300"
                     onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/96';
+                      e.target.src = '/default-avatar.png';
                     }}
                   />
                 ) : (
@@ -810,7 +810,7 @@ const ProfilePage = () => {
                           className="w-full h-48 object-cover rounded-lg cursor-pointer"
                           onError={(e) => {
                             console.error('ProfilePage.jsx - Failed to load image:', post.mediaUrls[0]);
-                            e.target.src = 'https://via.placeholder.com/150';
+                            e.target.src = '/default-avatar.png';
                           }}
                           onLoad={() => console.log('ProfilePage.jsx - Image loaded successfully:', post.mediaUrls[0])}
                           onClick={() => handlePostClick(post)}
@@ -986,7 +986,7 @@ const ProfilePage = () => {
                               className="w-16 h-16 object-cover rounded"
                               onError={(e) => {
                                 console.error('ProfilePage.jsx - Failed to load uploaded image:', imageId);
-                                e.target.src = 'https://via.placeholder.com/64';
+                                e.target.src = '/default-avatar.png';
                               }}
                               onLoad={() => console.log('ProfilePage.jsx - Uploaded image loaded successfully:', imageId)}
                             />
