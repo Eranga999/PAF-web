@@ -205,7 +205,7 @@ export default function Navbar() {
                     alt="Profile"
                     className="h-8 w-8 object-cover"
                     onError={(e) => {
-                      e.target.src = "https://via.placeholder.com/150";
+                      e.target.src = "/default-avatar.png";
                       console.log("Navbar - Profile picture load failed");
                     }}
                   />

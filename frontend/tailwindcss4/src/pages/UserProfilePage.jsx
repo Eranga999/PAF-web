@@ -56,24 +56,19 @@ const UserProfilePage = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        navigate('/login');
-        return;
+        // Don't navigate away, just try with session/cookie
       }
-
-      // Note: This endpoint doesn't exist yet. You'd need to create it to fetch a specific user's posts
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const response = await fetch(`http://localhost:8080/api/posts/user/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        credentials: "include",
+        headers
       });
-
       if (response.ok) {
         const data = await response.json();
         setCurrentUserPosts(data);
       } else {
         console.error('Failed to fetch user posts:', response.status);
-        // Setting empty array as fallback
         setCurrentUserPosts([]);
       }
     } catch (error) {
@@ -299,7 +294,7 @@ const UserProfilePage = () => {
                         {post.mediaUrls.map((mediaUrl, idx) => (
                           <img 
                             key={idx}
-                            src={mediaUrl}
+                            src={`http://localhost:8080/api/images/${mediaUrl}`}
                             alt={`Post media ${idx + 1}`}
                             className="rounded-lg w-full h-48 object-cover"
                           />

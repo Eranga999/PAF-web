@@ -6,6 +6,7 @@ import com.skillshare.cooking.entity.Notification;
 import com.skillshare.cooking.entity.Post;
 import com.skillshare.cooking.repository.ImageRepository;
 import com.skillshare.cooking.repository.NotificationRepository;
+import com.skillshare.cooking.repository.UserRepository;
 import com.skillshare.cooking.service.PostService;
 import org.bson.types.Binary;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ public class PostController {
 
     @Autowired
     private ImageRepository imageRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private NotificationRepository notificationRepository;
@@ -304,6 +308,22 @@ public class PostController {
         } catch (Exception e) {
             System.err.println("Error marking notification as read: " + e.getMessage());
             e.printStackTrace();
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @GetMapping("/posts/user/{userId}")
+    public ResponseEntity<List<Post>> getPostsByUserId(@PathVariable String userId) {
+        try {
+            Optional<com.skillshare.cooking.entity.User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            String userEmail = userOpt.get().getEmail();
+            List<Post> userPosts = postService.getPostsByUserEmail(userEmail);
+            return ResponseEntity.ok(userPosts);
+        } catch (Exception e) {
+            System.err.println("Error fetching posts for userId " + userId + ": " + e.getMessage());
             return ResponseEntity.status(500).body(null);
         }
     }
