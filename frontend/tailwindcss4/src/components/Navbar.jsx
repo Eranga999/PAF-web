@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { ChefHat, Menu, LogOut, User, BookOpen, Search, Users } from "lucide-react";
+import { ChefHat, Menu, LogOut, User, BookOpen, Search, Users, Bell } from "lucide-react";
 import { classNames } from "../utils/classNames";
 
 export default function Navbar() {
@@ -9,6 +9,7 @@ export default function Navbar() {
   const [user, setUser] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   // Helper function to check if token is likely valid (not expired)
   const isTokenValid = (token) => {
@@ -23,19 +24,19 @@ export default function Navbar() {
     }
   };
 
+  // Fetch user and notifications
   useEffect(() => {
     const fetchUser = async () => {
       const token = localStorage.getItem("token");
       if (!token || !isTokenValid(token)) {
         setUser(null);
-        // Only redirect to login if on a protected route and no valid token
+        setNotificationCount(0);
         if (location.pathname !== "/login" && location.pathname !== "/") {
           navigate("/login", { replace: true });
         }
         return;
       }
 
-      // Skip fetch if user is already set
       if (user) return;
 
       try {
@@ -51,29 +52,56 @@ export default function Navbar() {
           console.log("Navbar - Fetched user:", data);
           console.log("Navbar - Profile picture URL:", data.profilePictureUrl);
         } else if (response.status === 401) {
-          // Token is explicitly invalid
           console.error("Navbar - Unauthorized, clearing token");
           localStorage.removeItem("token");
           setUser(null);
+          setNotificationCount(0);
           navigate("/login", { replace: true });
         } else {
-          // Non-401 errors (e.g., 500, network issues) shouldn't log out
           console.error("Navbar - Fetch user failed:", response.status);
         }
       } catch (error) {
-        // Network or other errors shouldn't log out
         console.error("Navbar - Fetch user error:", error);
       }
     };
 
+    const fetchNotificationCount = async () => {
+      const token = localStorage.getItem("token");
+      if (!token || !isTokenValid(token)) {
+        setNotificationCount(0);
+        return;
+      }
+
+      try {
+        const response = await fetch("http://localhost:8080/api/notifications", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (response.ok) {
+          const notifications = await response.json();
+          const unreadCount = notifications.filter((n) => !n.read).length;
+          setNotificationCount(unreadCount);
+        } else if (response.status === 401) {
+          setNotificationCount(0);
+        }
+      } catch (error) {
+        console.error("Navbar - Fetch notifications error:", error);
+        setNotificationCount(0);
+      }
+    };
+
     fetchUser();
-  }, [location.pathname, navigate]); // Run on route changes
+    fetchNotificationCount();
+  }, [location.pathname, navigate, user]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     setUser(null);
+    setNotificationCount(0);
     setDropdownOpen(false);
-    navigate("/login", { replace: true }); // Redirect to login on logout
+    navigate("/login", { replace: true });
     console.log("Navbar - User logged out");
   };
 
@@ -138,6 +166,22 @@ export default function Navbar() {
                 Learning Plan Overview
               </Link>
               <Link
+                to="/notifications"
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium relative ${
+                  isActive("/notifications")
+                    ? "border-blue-400 text-white"
+                    : "border-transparent text-gray-300 hover:border-gray-500 hover:text-white"
+                }`}
+              >
+                <Bell className="mr-1 h-4 w-4" />
+                Notifications
+                {notificationCount > 0 && (
+                  <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center transform translate-x-1/2 -translate-y-1/2">
+                    {notificationCount}
+                  </span>
+                )}
+              </Link>
+              <Link
                 to="/profile"
                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                   isActive("/profile")
@@ -183,6 +227,18 @@ export default function Navbar() {
                       onClick={() => setDropdownOpen(false)}
                     >
                       <User className="mr-2 h-4 w-4" /> Profile
+                    </Link>
+                    <Link
+                      to="/notifications"
+                      className="w-full text-left p-2 hover:bg-gray-600 flex items-center text-gray-300 hover:text-white"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <Bell className="mr-2 h-4 w-4" /> Notifications
+                      {notificationCount > 0 && (
+                        <span className="ml-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                          {notificationCount}
+                        </span>
+                      )}
                     </Link>
                     <Link
                       to="/learningplan"
@@ -255,6 +311,21 @@ export default function Navbar() {
               }`}
             >
               Learning Plan Overview
+            </Link>
+            <Link
+              to="/notifications"
+              className={`block pl-3 pr-4 py-2 relative ${
+                isActive("/notifications")
+                  ? "border-l-4 border-blue-400 text-blue-400 bg-gray-700 font-medium"
+                  : "border-l-4 border-transparent text-gray-300 hover:bg-gray-700 hover:text-white"
+              }`}
+            >
+              Notifications
+              {notificationCount > 0 && (
+                <span className="ml-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {notificationCount}
+                </span>
+              )}
             </Link>
             <Link
               to="/profile"

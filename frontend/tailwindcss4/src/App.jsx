@@ -13,6 +13,7 @@ import ExplorePage from "./pages/ExplorePage";
 import UserProfilePage from "./pages/UserProfilePage";
 import Signup from "./pages/Signup";
 import LearningPlanDetailPage from "./pages/learningplan/LearningPlanDetailPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 function App() {
   return (
@@ -27,7 +28,9 @@ function App() {
       <Route path="/explore" element={<ExplorePage />} />
       <Route path="/users/:userId" element={<UserProfilePage />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/notifications" element={<NotificationsPage/>} />
       <Route path="/learning-journey/:id" element={<LearningPlanDetailPage />} />
+
     </Routes>
   );
 }
